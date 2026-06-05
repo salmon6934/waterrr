@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground: #000;
+  --background: #fff;
+  --muted: #666;
+  --border: #000;
+}
+
+.dark {
+  --foreground: #fff;
+  --background: #000;
+  --muted: #999;
+  --border: #fff;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: "Space Mono", monospace;
+}

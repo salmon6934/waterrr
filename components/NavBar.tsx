@@ -1,0 +1,43 @@
+'use client';
+
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { Home, Settings, Users, LogIn } from 'lucide-react';
+
+const navItems = [
+  { href: '/', label: 'Home', icon: Home },
+  { href: '/settings', label: 'Settings', icon: Settings },
+  { href: '/friends', label: 'Friends', icon: Users },
+  { href: '/auth', label: 'Auth', icon: LogIn },
+];
+
+export default function NavBar() {
+  const pathname = usePathname();
+
+  return (
+    <nav
+      className="fixed bottom-0 left-0 right-0 max-w-[390px] mx-auto border-t border-border bg-background"
+      aria-label="Main navigation"
+    >
+      <ul className="flex items-center justify-around h-14">
+        {navItems.map(({ href, label, icon: Icon }) => {
+          const isActive = pathname === href;
+          return (
+            <li key={href}>
+              <Link
+                href={href}
+                className={`flex flex-col items-center gap-0.5 px-3 py-1 ${
+                  isActive ? 'text-foreground' : 'text-muted'
+                }`}
+                aria-current={isActive ? 'page' : undefined}
+              >
+                <Icon size={20} strokeWidth={2} />
+                <span className="text-[10px] font-mono">{label}</span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  );
+}
