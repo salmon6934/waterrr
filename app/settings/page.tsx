@@ -8,18 +8,54 @@ import { supabase } from '@/lib/supabase';
 import { getSession } from '@/lib/auth';
 import type { DailyGoal } from '@/lib/types';
 
+function getHydrationStatus(goalValue: number): { message: string; color: string } {
+  if (goalValue < 1500) {
+    return { message: 'Below recommended intake. Adults typically need 1500–3000 ml/day.', color: 'text-yellow-500' };
+  }
+  if (goalValue <= 3000) {
+    return { message: 'Good target! This is within the recommended daily range.', color: 'text-green-500' };
+  }
+  return { message: 'Above typical intake. Make sure this suits your activity level.', color: 'text-orange-500' };
+}
+
 export default function SettingsPage() {
-  const [goalValue, setGoalValue] = useState<number>(2000);
+  const [goalInput, setGoalInput] = useState<string>('2000');
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const stored = loadDailyGoal();
-    setGoalValue(stored.value);
+    setGoalInput(String(stored.value));
   }, []);
 
+  function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const raw = e.target.value;
+    // Allow empty string so user can fully clear the field
+    if (raw === '') {
+      setGoalInput('');
+      return;
+    }
+    // Remove leading zeros and set the numeric string
+    const cleaned = raw.replace(/^0+/, '') || '';
+    setGoalInput(cleaned);
+  }
+
   function handleGoalSave() {
+    setError('');
+
+    // Validate empty or invalid
+    const numValue = Number(goalInput);
+    if (!goalInput || isNaN(numValue) || numValue < 1) {
+      setError('Please enter a valid daily goal (1–5000 ml)');
+      return;
+    }
+    if (numValue > 5000) {
+      setError('Maximum daily goal is 5000 ml');
+      return;
+    }
+
     const goal: DailyGoal = {
-      value: goalValue,
+      value: numValue,
       updatedAt: new Date().toISOString(),
     };
     saveDailyGoal(goal);
@@ -31,16 +67,19 @@ export default function SettingsPage() {
       if (session) {
         supabase
           .from('profiles')
-          .update({ daily_goal: goalValue })
+          .update({ daily_goal: numValue })
           .eq('id', session.user.id)
-          .then(({ error }) => {
-            if (error) {
-              console.error('Failed to sync daily goal to Supabase:', error.message);
+          .then(({ error: syncError }) => {
+            if (syncError) {
+              console.error('Failed to sync daily goal to Supabase:', syncError.message);
             }
           });
       }
     });
   }
+
+  const numericGoal = Number(goalInput) || 0;
+  const hydrationStatus = numericGoal > 0 ? getHydrationStatus(numericGoal) : null;
 
   return (
     <main className="w-full max-w-[390px] mx-auto px-4 py-8 font-mono">
@@ -54,8 +93,8 @@ export default function SettingsPage() {
             type="number"
             min={1}
             max={5000}
-            value={goalValue}
-            onChange={(e) => setGoalValue(Number(e.target.value))}
+            value={goalInput}
+            onChange={handleInputChange}
             aria-label="Daily goal in milliliters"
             className="flex-1 bg-background text-foreground border border-border px-3 py-2 text-sm font-mono"
           />
@@ -67,6 +106,18 @@ export default function SettingsPage() {
             {saved ? 'Saved' : 'Save'}
           </button>
         </div>
+
+        {/* Error message */}
+        {error && (
+          <p className="mt-2 text-xs text-red-500">{error}</p>
+        )}
+
+        {/* Hydration status */}
+        {hydrationStatus && (
+          <p className={`mt-3 text-xs ${hydrationStatus.color}`}>
+            {hydrationStatus.message}
+          </p>
+        )}
       </section>
 
       {/* Reminders Section */}

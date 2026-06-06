@@ -9,6 +9,7 @@ import { FriendProgress } from '@/lib/types';
 import FriendCard from '@/components/FriendCard';
 import FriendSearch from '@/components/FriendSearch';
 import InviteShare from '@/components/InviteShare';
+import PendingRequests from '@/components/PendingRequests';
 
 export default function FriendsPage() {
   const [session, setSession] = useState<Session | null>(null);
@@ -177,6 +178,9 @@ export default function FriendsPage() {
       <h1 className="text-lg font-bold text-foreground mb-6 uppercase tracking-wide">
         Friends
       </h1>
+
+      {/* Pending friend requests */}
+      <PendingRequests />
 
       {/* Friends list */}
       <section className="mb-6">
