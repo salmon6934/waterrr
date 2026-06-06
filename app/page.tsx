@@ -9,6 +9,7 @@ import DailyLog from '@/components/DailyLog';
 import {
   loadTodayEntries,
   saveIntakeEntry,
+  deleteIntakeEntry,
   loadDailyGoal,
   loadStreakData,
   saveStreakData,
@@ -171,6 +172,40 @@ export default function Home() {
     [entries, goal]
   );
 
+  const handleDeleteEntry = useCallback(
+    (id: string) => {
+      // Remove from localStorage
+      deleteIntakeEntry(id);
+
+      // Update state
+      const updatedEntries = entries.filter((e) => e.id !== id);
+      setEntries(updatedEntries);
+
+      // Delete from Supabase
+      getSession().then((session) => {
+        if (session) {
+          supabase
+            .from('intake_entries')
+            .delete()
+            .eq('id', id)
+            .eq('user_id', session.user.id)
+            .then(({ error }) => {
+              if (error) {
+                console.error('Failed to delete entry from Supabase:', error.message);
+              }
+            });
+        }
+      });
+
+      // Reset goal reached state if we drop below goal
+      const newTotal = calculateTotalIntake(updatedEntries);
+      if (newTotal < goal) {
+        goalReachedRef.current = false;
+      }
+    },
+    [entries, goal]
+  );
+
   const totalIntake = calculateTotalIntake(entries);
 
   return (
@@ -207,7 +242,7 @@ export default function Home() {
 
       {/* Daily Log */}
       <div className="w-full max-w-sm">
-        <DailyLog entries={entries} />
+        <DailyLog entries={entries} onDelete={handleDeleteEntry} />
       </div>
     </main>
   );

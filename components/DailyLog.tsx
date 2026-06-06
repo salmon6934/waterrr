@@ -1,11 +1,13 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
+import { X } from 'lucide-react';
 import { IntakeEntry } from '@/lib/types';
 import { sortEntriesChronologically } from '@/lib/intake';
 
 interface DailyLogProps {
   entries: IntakeEntry[];
+  onDelete?: (id: string) => void;
 }
 
 /**
@@ -21,7 +23,7 @@ function formatTimestamp(timestamp: string): string {
  * recorded for the current day. Each entry shows volume (ml) and
  * a formatted timestamp. New entries animate in via Framer Motion.
  */
-export default function DailyLog({ entries }: DailyLogProps) {
+export default function DailyLog({ entries, onDelete }: DailyLogProps) {
   const sorted = sortEntriesChronologically(entries);
 
   return (
@@ -42,7 +44,18 @@ export default function DailyLog({ entries }: DailyLogProps) {
                 className="flex items-center justify-between border border-border px-3 py-2 font-mono text-sm"
               >
                 <span className="text-foreground">{entry.volume} ml</span>
-                <span className="text-muted">{formatTimestamp(entry.timestamp)}</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-muted">{formatTimestamp(entry.timestamp)}</span>
+                  {onDelete && (
+                    <button
+                      onClick={() => onDelete(entry.id)}
+                      className="text-muted hover:text-foreground transition-colors"
+                      aria-label={`Delete ${entry.volume}ml entry`}
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
               </motion.li>
             ))}
           </AnimatePresence>

@@ -29,6 +29,19 @@ export function saveIntakeEntry(entry: IntakeEntry): void {
 }
 
 /**
+ * Deletes an intake entry by ID from localStorage.
+ */
+export function deleteIntakeEntry(id: string): void {
+  try {
+    const existing = loadAllEntries();
+    const filtered = existing.filter((entry) => entry.id !== id);
+    localStorage.setItem(STORAGE_KEYS.INTAKE_ENTRIES, JSON.stringify(filtered));
+  } catch {
+    // Silently fail if localStorage is unavailable
+  }
+}
+
+/**
  * Loads all intake entries for the current calendar date.
  */
 export function loadTodayEntries(): IntakeEntry[] {
