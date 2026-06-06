@@ -83,7 +83,7 @@ Implement a mobile-first hydration tracking Android app using Next.js 15 static 
     - **Property 14: Streak increment is monotonic per day**
     - **Validates: Requirements 12.1, 12.2**
 
-- [~] 3. Checkpoint - Core logic verified
+- [ ] 3. Checkpoint - Core logic verified
   - Ensure all tests pass, ask the user if questions arise.
 
 - [x] 4. Implement notification and haptics services
@@ -253,7 +253,7 @@ Implement a mobile-first hydration tracking Android app using Next.js 15 static 
     - Handle disconnect/reconnect with connectivity indicator
     - _Requirements: 9.1, 9.2, 9.3, 9.4, 12.6_
 
-- [~] 11. Final checkpoint - Full integration verified
+- [x] 11. Final checkpoint - Full integration verified
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes

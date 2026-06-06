@@ -2,13 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Settings, Users, LogIn } from 'lucide-react';
+import { Home, Settings, Users, User } from 'lucide-react';
 
 const navItems = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/settings', label: 'Settings', icon: Settings },
   { href: '/friends', label: 'Friends', icon: Users },
-  { href: '/auth', label: 'Auth', icon: LogIn },
+  { href: '/profile', label: 'Profile', icon: User },
 ];
 
 export default function NavBar() {

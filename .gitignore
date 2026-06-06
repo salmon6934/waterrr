@@ -24,7 +24,11 @@ yarn-debug.log*
 yarn-error.log*
 
 # local env files
+.env
 .env*.local
+
+# sensitive files
+pass
 
 # vercel
 .vercel
@@ -36,3 +40,9 @@ next-env.d.ts
 # capacitor
 /android/
 /ios/
+
+# kiro
+.kiro/
+
+# playwright
+.playwright-mcp/
