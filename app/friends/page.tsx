@@ -16,6 +16,7 @@ export default function FriendsPage() {
   const [loading, setLoading] = useState(true);
   const [friends, setFriends] = useState<FriendProgress[]>([]);
   const [connected, setConnected] = useState(true);
+  const [showAddFriend, setShowAddFriend] = useState(false);
 
   // Load session on mount and listen for auth changes
   useEffect(() => {
@@ -200,18 +201,31 @@ export default function FriendsPage() {
         )}
       </section>
 
-      {/* Friend search */}
-      <section className="mb-6">
-        <h2 className="text-sm font-bold text-foreground mb-3 uppercase tracking-wide">
-          Find Friends
-        </h2>
-        <FriendSearch />
-      </section>
+      {/* Add Friend button */}
+      <button
+        onClick={() => setShowAddFriend(!showAddFriend)}
+        className="w-full mb-6 flex items-center justify-center gap-2 border border-border px-4 py-3 text-sm font-mono text-foreground bg-background hover:bg-foreground hover:text-background transition-colors"
+      >
+        <span>{showAddFriend ? 'Close' : '+ Add Friend'}</span>
+      </button>
 
-      {/* Invite share */}
-      <section className="mb-6">
-        <InviteShare userId={session!.user.id} />
-      </section>
+      {/* Add friend panel (search + invite) */}
+      {showAddFriend && (
+        <div className="mb-6 space-y-6">
+          {/* Friend search */}
+          <section>
+            <h2 className="text-sm font-bold text-foreground mb-3 uppercase tracking-wide">
+              Find Friends
+            </h2>
+            <FriendSearch />
+          </section>
+
+          {/* Invite share */}
+          <section>
+            <InviteShare userId={session!.user.id} />
+          </section>
+        </div>
+      )}
     </div>
   );
 }
