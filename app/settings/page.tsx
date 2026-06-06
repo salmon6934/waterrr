@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import ReminderForm from '@/components/ReminderForm';
 import ThemeToggle from '@/components/ThemeToggle';
 import { loadDailyGoal, saveDailyGoal } from '@/lib/storage';
+import { supabase } from '@/lib/supabase';
+import { getSession } from '@/lib/auth';
 import type { DailyGoal } from '@/lib/types';
 
 export default function SettingsPage() {
@@ -23,6 +25,21 @@ export default function SettingsPage() {
     saveDailyGoal(goal);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+
+    // Sync to Supabase
+    getSession().then((session) => {
+      if (session) {
+        supabase
+          .from('profiles')
+          .update({ daily_goal: goalValue })
+          .eq('id', session.user.id)
+          .then(({ error }) => {
+            if (error) {
+              console.error('Failed to sync daily goal to Supabase:', error.message);
+            }
+          });
+      }
+    });
   }
 
   return (

@@ -15,7 +15,6 @@ import {
 } from '@/lib/storage';
 import {
   calculateTotalIntake,
-  isToday,
 } from '@/lib/intake';
 import {
   isDailyGoalMet,
@@ -26,6 +25,8 @@ import {
 import { triggerGoalCompletionHaptic } from '@/lib/haptics';
 import { PRESET_VOLUMES } from '@/lib/constants';
 import { IntakeEntry } from '@/lib/types';
+import { supabase } from '@/lib/supabase';
+import { getSession } from '@/lib/auth';
 
 export default function Home() {
   const [entries, setEntries] = useState<IntakeEntry[]>([]);
@@ -102,12 +103,31 @@ export default function Home() {
         timestamp: new Date().toISOString(),
       };
 
-      // Save to storage
+      // Save to localStorage
       saveIntakeEntry(newEntry);
 
       // Update entries state
       const updatedEntries = [...entries, newEntry];
       setEntries(updatedEntries);
+
+      // Sync to Supabase immediately
+      getSession().then((session) => {
+        if (session) {
+          supabase
+            .from('intake_entries')
+            .upsert({
+              id: newEntry.id,
+              user_id: session.user.id,
+              volume: newEntry.volume,
+              timestamp: newEntry.timestamp,
+            }, { onConflict: 'id' })
+            .then(({ error }) => {
+              if (error) {
+                console.error('Failed to sync entry to Supabase:', error.message);
+              }
+            });
+        }
+      });
 
       // Check if goal is met for the first time
       const newTotal = calculateTotalIntake(updatedEntries);
@@ -123,10 +143,28 @@ export default function Home() {
         const newStreak = updateStreak(streakData.currentStreak, goalMet);
         setStreak(newStreak);
 
-        // Persist streak
+        // Persist streak locally
         saveStreakData({
           currentStreak: newStreak,
           lastCompletedDate: toDateString(new Date()),
+        });
+
+        // Sync streak to Supabase
+        getSession().then((session) => {
+          if (session) {
+            supabase
+              .from('profiles')
+              .update({
+                current_streak: newStreak,
+                last_completed_date: toDateString(new Date()),
+              })
+              .eq('id', session.user.id)
+              .then(({ error }) => {
+                if (error) {
+                  console.error('Failed to sync streak to Supabase:', error.message);
+                }
+              });
+          }
         });
       }
     },

@@ -41,8 +41,13 @@ next-env.d.ts
 /android/
 /ios/
 
+# editor
+.vscode/
+
 # kiro
 .kiro/
 
 # playwright
 .playwright-mcp/
+
+.vscode/
