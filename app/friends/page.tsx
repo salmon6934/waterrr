@@ -112,8 +112,9 @@ export default function FriendsPage() {
     loadFriends(userId);
 
     // Subscribe to real-time changes on intake_entries for friends
+    const channelName = `friends-intake-${Date.now()}`;
     const intakeChannel = supabase
-      .channel('friends-intake')
+      .channel(channelName)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'intake_entries' },

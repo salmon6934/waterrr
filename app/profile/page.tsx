@@ -3,24 +3,44 @@
 import { useState, useEffect } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { getSession, signOut, onAuthStateChange } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
 import { LogOut, User } from 'lucide-react';
 
 export default function ProfilePage() {
   const [session, setSession] = useState<Session | null>(null);
+  const [username, setUsername] = useState<string>('');
   const [error, setError] = useState('');
 
   useEffect(() => {
-    getSession().then((s) => setSession(s));
+    getSession().then((s) => {
+      setSession(s);
+      if (s) loadUsername(s.user.id);
+    });
 
     const { unsubscribe } = onAuthStateChange((s) => {
       setSession(s);
+      if (s) loadUsername(s.user.id);
     });
 
     return () => unsubscribe();
   }, []);
 
+  async function loadUsername(userId: string) {
+    const { data } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', userId)
+      .single();
+    if (data) setUsername(data.username);
+  }
+
   async function handleSignOut() {
     try {
+      // Clear localStorage so next user doesn't inherit stale data
+      localStorage.removeItem('water_reminder_intake_entries');
+      localStorage.removeItem('water_reminder_daily_goal');
+      localStorage.removeItem('water_reminder_streak');
+      localStorage.removeItem('water_reminder_reminders');
       await signOut();
     } catch (err: unknown) {
       const errorMessage =
@@ -40,6 +60,9 @@ export default function ProfilePage() {
           <div className="w-16 h-16 border border-border flex items-center justify-center">
             <User size={32} className="text-muted" />
           </div>
+          {username && (
+            <p className="text-lg font-bold text-foreground">{username}</p>
+          )}
           <h1 className="text-2xl font-bold text-center">Profile</h1>
         </div>
 

@@ -37,10 +37,10 @@ export default function DailyLog({ entries, onDelete }: DailyLogProps) {
             {sorted.map((entry) => (
               <motion.li
                 key={entry.id}
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.2 }}
+                initial={{ opacity: 0, x: 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -40 }}
+                transition={{ duration: 0.25, ease: 'easeOut' }}
                 className="flex items-center justify-between border border-border px-3 py-2 font-mono text-sm"
               >
                 <span className="text-foreground">{entry.volume} ml</span>

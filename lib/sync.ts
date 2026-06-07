@@ -234,8 +234,9 @@ export async function syncAllToSupabase(userId: string): Promise<void> {
 
 /**
  * Initializes the background sync listener.
- * On auth state change (user login), syncs local data to Supabase.
- * If localStorage is unavailable, loads data from Supabase as fallback.
+ * On auth state change (user login):
+ * 1. First pulls today's data from Supabase into localStorage (for multi-device support)
+ * 2. Then syncs any local-only data back to Supabase
  *
  * @returns An unsubscribe function to remove the auth listener.
  */
@@ -245,16 +246,50 @@ export function initBackgroundSync(): { unsubscribe: () => void } {
 
     const userId = session.user.id;
 
+    // Always pull from Supabase first to support multi-device
+    await pullFromSupabase(userId);
+
     if (isLocalStorageAvailable()) {
-      // Sync local data to Supabase in background
+      // Then sync any local data back to Supabase
       await syncAllToSupabase(userId);
-    } else {
-      // Fallback: load from Supabase if localStorage is unavailable
-      await fallbackLoadFromSupabase(userId);
     }
   });
 
   return { unsubscribe };
+}
+
+/**
+ * Pulls the user's data from Supabase and merges it into localStorage.
+ * Ensures multi-device data is available locally.
+ */
+async function pullFromSupabase(userId: string): Promise<void> {
+  try {
+    const [entries, dailyGoal, streak] = await Promise.all([
+      loadIntakeEntriesFromSupabase(userId),
+      loadDailyGoalFromSupabase(userId),
+      loadStreakFromSupabase(userId),
+    ]);
+
+    // Merge remote entries with local (deduplicate by id)
+    const localEntries = loadAllLocalEntries();
+    const localIds = new Set(localEntries.map((e) => e.id));
+    const newEntries = entries.filter((e) => !localIds.has(e.id));
+
+    if (newEntries.length > 0) {
+      const merged = [...localEntries, ...newEntries];
+      localStorage.setItem(STORAGE_KEYS.INTAKE_ENTRIES, JSON.stringify(merged));
+    }
+
+    // Use remote goal/streak if available (server is source of truth)
+    if (dailyGoal) {
+      saveDailyGoal(dailyGoal);
+    }
+    if (streak) {
+      saveStreakData(streak);
+    }
+  } catch {
+    // Silently fail — local data still works
+  }
 }
 
 // --- Internal helpers ---
