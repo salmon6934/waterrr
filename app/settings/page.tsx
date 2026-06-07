@@ -122,7 +122,7 @@ export default function SettingsPage() {
 
       {/* Reminders Section */}
       <section className="mb-8">
-        <h2 className="text-sm font-mono text-muted mb-3">Reminders</h2>
+        <h2 className="text-sm font-mono text-muted mb-3">Hydration Reminders</h2>
         <ReminderForm />
       </section>
 

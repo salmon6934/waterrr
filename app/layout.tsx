@@ -8,10 +8,11 @@ import PageTransition from '../components/PageTransition';
 import NavBar from '../components/NavBar';
 import AuthScreen from '../components/AuthScreen';
 import OnboardingScreen from '../components/OnboardingScreen';
-import { loadTheme } from '../lib/storage';
+import { loadTheme, loadReminderSchedule } from '../lib/storage';
 import { getSession, onAuthStateChange } from '../lib/auth';
 import { initBackgroundSync } from '../lib/sync';
 import { supabase } from '../lib/supabase';
+import { initNotificationListener, scheduleNotifications } from '../lib/notifications';
 
 const spaceMono = Space_Mono({
   weight: ['400', '700'],
@@ -69,6 +70,15 @@ export default function RootLayout({
 
     // Initialize background sync
     const sync = initBackgroundSync();
+
+    // Initialize notification listener and re-schedule if enabled
+    const reminderSchedule = loadReminderSchedule();
+    if (reminderSchedule.enabled) {
+      scheduleNotifications(reminderSchedule).catch(() => {
+        // Best effort — don't block app startup
+      });
+      initNotificationListener(reminderSchedule);
+    }
 
     return () => {
       unsubscribe();

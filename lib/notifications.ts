@@ -7,15 +7,12 @@
  */
 
 import type { ReminderSchedule } from './types';
+import { Capacitor } from '@capacitor/core';
+import { LocalNotifications } from '@capacitor/local-notifications';
 
 /**
  * Checks if a given time falls within the [start, end] active hours range.
  * Both start and end are inclusive.
- *
- * @param time - The Date to check
- * @param start - Start time in "HH:MM" format
- * @param end - End time in "HH:MM" format
- * @returns true if the time is within [start, end]
  */
 export function isWithinActiveHours(
   time: Date,
@@ -36,10 +33,6 @@ export function isWithinActiveHours(
  * Computes an array of notification times for a given day based on the
  * reminder schedule. All times fall within [activeHoursStart, activeHoursEnd]
  * and are spaced exactly intervalMinutes apart.
- *
- * @param schedule - The reminder schedule configuration
- * @param referenceDate - The date for which to compute notification times
- * @returns Array of Date objects representing notification times
  */
 export function computeNotificationTimes(
   schedule: ReminderSchedule,
@@ -55,7 +48,6 @@ export function computeNotificationTimes(
   const startMinutes = startHour * 60 + startMinute;
   const endMinutes = endHour * 60 + endMinute;
 
-  // If start >= end, no valid window exists
   if (startMinutes >= endMinutes) {
     return [];
   }
@@ -79,39 +71,38 @@ export function computeNotificationTimes(
 
 // --- Capacitor LocalNotifications integration ---
 
-interface LocalNotificationRequest {
-  id: number;
-  title: string;
-  body: string;
-  schedule: { at: Date };
-}
+const SCHEDULE_DAYS_AHEAD = 7;
 
-/**
- * Attempts to dynamically import Capacitor LocalNotifications.
- * Returns null if unavailable (web/dev environment).
- */
-async function getLocalNotificationsPlugin() {
+const REMINDER_MESSAGES = [
+  'Take a sip. Your body will thank you.',
+  'Water break. You got this.',
+  'Quick reminder — hydrate.',
+  'Your future self wants you to drink water right now.',
+  'Sip sip. Keep the streak alive.',
+  'A glass of water goes a long way.',
+  'Pause. Breathe. Drink.',
+  'Hydration check ✓',
+  'Water > everything else rn.',
+  'Just a sip. That\'s all it takes.',
+];
+
+/** Returns true if running on a native platform (Android/iOS). */
+function isNative(): boolean {
   try {
-    const { LocalNotifications } = await import('@capacitor/local-notifications');
-    return LocalNotifications;
+    return Capacitor.isNativePlatform();
   } catch {
-    return null;
+    return false;
   }
 }
 
 /**
  * Requests notification permissions from the user.
- * Returns true if permission is granted, false otherwise.
  */
 export async function requestNotificationPermission(): Promise<boolean> {
-  const plugin = await getLocalNotificationsPlugin();
-  if (!plugin) {
-    // Web/dev fallback — assume granted for development
-    return true;
-  }
+  if (!isNative()) return true;
 
   try {
-    const result = await plugin.requestPermissions();
+    const result = await LocalNotifications.requestPermissions();
     return result.display === 'granted';
   } catch {
     return false;
@@ -119,93 +110,125 @@ export async function requestNotificationPermission(): Promise<boolean> {
 }
 
 /**
- * Schedules local notifications based on the reminder schedule.
- * Cancels any previously scheduled notifications first, then schedules
- * fresh notifications for the computed times.
- *
- * @param schedule - The reminder schedule configuration
- * @throws Error if scheduling fails (caller should display error to user)
+ * Schedules local notifications for the next 7 days based on the schedule.
+ * Cancels all existing notifications first.
  */
 export async function scheduleNotifications(
   schedule: ReminderSchedule
 ): Promise<void> {
-  // Always cancel existing notifications first
   await cancelAllNotifications();
 
-  if (!schedule.enabled) {
-    return;
-  }
-
-  const plugin = await getLocalNotificationsPlugin();
-  if (!plugin) {
-    // Web/dev fallback — log and return silently
-    console.info('[Notifications] Capacitor plugin not available, skipping schedule.');
-    return;
-  }
-
-  // Request permission if needed
-  const hasPermission = await requestNotificationPermission();
-  if (!hasPermission) {
-    throw new Error('Notification permission denied. Please enable notifications in your device settings.');
-  }
+  if (!schedule.enabled) return;
+  if (!isNative()) return;
 
   const now = new Date();
-  const times = computeNotificationTimes(schedule, now);
+  const allFutureTimes: Date[] = [];
 
-  // Filter out times that have already passed today
-  const futureTimes = times.filter((t) => t.getTime() > now.getTime());
+  for (let dayOffset = 0; dayOffset < SCHEDULE_DAYS_AHEAD; dayOffset++) {
+    const day = new Date(now);
+    day.setDate(day.getDate() + dayOffset);
 
-  if (futureTimes.length === 0) {
-    return;
+    const times = computeNotificationTimes(schedule, day);
+    const futureTimes = times.filter((t) => t.getTime() > now.getTime());
+    allFutureTimes.push(...futureTimes);
   }
 
-  const notifications: LocalNotificationRequest[] = futureTimes.map((time, index) => ({
+  if (allFutureTimes.length === 0) return;
+
+  const notifications = allFutureTimes.map((time, index) => ({
     id: index + 1,
-    title: 'Hydration Reminder 💧',
-    body: 'Time to drink some water! Stay hydrated.',
+    title: 'Tis time',
+    body: REMINDER_MESSAGES[index % REMINDER_MESSAGES.length],
     schedule: { at: time },
   }));
 
-  try {
-    await plugin.schedule({ notifications });
-  } catch (error) {
-    throw new Error(
-      `Failed to schedule notifications: ${error instanceof Error ? error.message : 'Unknown error'}`
-    );
-  }
+  await LocalNotifications.schedule({ notifications });
 }
 
 /**
  * Cancels all previously scheduled notifications.
  */
 export async function cancelAllNotifications(): Promise<void> {
-  const plugin = await getLocalNotificationsPlugin();
-  if (!plugin) {
-    return;
-  }
+  if (!isNative()) return;
 
   try {
-    const pending = await plugin.getPending();
+    const pending = await LocalNotifications.getPending();
     if (pending.notifications.length > 0) {
-      await plugin.cancel({
+      await LocalNotifications.cancel({
         notifications: pending.notifications.map((n) => ({ id: n.id })),
       });
     }
   } catch {
-    // Silently fail on cancel — best effort cleanup
+    // Best effort
   }
 }
 
 /**
- * Reschedules notifications based on an updated schedule configuration.
- * Cancels all existing notifications and schedules fresh ones from the
- * new configuration.
- *
- * @param schedule - The updated reminder schedule
- * @throws Error if scheduling fails
+ * Reschedules notifications from the new configuration.
  */
 export async function rescheduleNotifications(
   schedule: ReminderSchedule
 ): Promise<void> {
   await scheduleNotifications(schedule);
+}
+
+/**
+ * Sets up a listener that tops up scheduled notifications when running low.
+ * Call once at app startup.
+ */
+export async function initNotificationListener(
+  schedule: ReminderSchedule
+): Promise<void> {
+  if (!isNative()) return;
+
+  LocalNotifications.addListener('localNotificationReceived', async () => {
+    try {
+      const pending = await LocalNotifications.getPending();
+      if (pending.notifications.length < 5) {
+        await scheduleNotifications(schedule);
+      }
+    } catch {
+      // Best effort
+    }
+  });
+}
+
+/**
+ * Sends a test notification that fires 10 seconds from now.
+ * Returns a status string describing what happened.
+ */
+export async function sendTestNotification(): Promise<string> {
+  if (!isNative()) {
+    return 'Not on native platform';
+  }
+
+  try {
+    const perm = await LocalNotifications.checkPermissions();
+    if (perm.display !== 'granted') {
+      const req = await LocalNotifications.requestPermissions();
+      if (req.display !== 'granted') {
+        return `Permission denied: ${req.display}`;
+      }
+    }
+  } catch (err) {
+    return `Permission error: ${err instanceof Error ? err.message : String(err)}`;
+  }
+
+  const fireAt = new Date(Date.now() + 10_000);
+
+  try {
+    await LocalNotifications.schedule({
+      notifications: [
+        {
+          id: 99999,
+          title: '💧 Test Notification',
+          body: `This is a test! Scheduled at ${new Date().toLocaleTimeString()}`,
+          schedule: { at: fireAt },
+        },
+      ],
+    });
+    return `OK — fires at ${fireAt.toLocaleTimeString()}`;
+  } catch (err) {
+    return `Schedule error: ${err instanceof Error ? err.message : String(err)}`;
+  }
 }
