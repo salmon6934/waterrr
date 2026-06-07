@@ -83,17 +83,13 @@ export default function RootLayout({
   return (
     <html lang="en" className={spaceMono.className}>
       <head>
-        <title>Water Reminder</title>
+        <title>Waterrr</title>
         <meta name="description" content="Track your daily water intake and stay hydrated" />
       </head>
       <body className="max-w-[390px] mx-auto bg-background text-foreground">
-        {loading ? (
-          <div className="flex min-h-screen items-center justify-center">
-            <p className="font-mono text-muted animate-pulse">Loading...</p>
-          </div>
-        ) : !session ? (
+        {loading ? null : !session ? (
           <AuthScreen />
-        ) : !hasProfile ? (
+        ) : hasProfile === null ? null : !hasProfile ? (
           <OnboardingScreen session={session} onComplete={handleOnboardingComplete} />
         ) : (
           <>

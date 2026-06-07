@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.avien.waterreminder',
-  appName: 'Water Reminder',
+  appName: 'Waterrr',
   webDir: 'out',
   server: {
     androidScheme: 'https',

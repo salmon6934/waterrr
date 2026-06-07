@@ -15,6 +15,7 @@ export default function FriendsPage() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [friends, setFriends] = useState<FriendProgress[]>([]);
+  const [friendsLoading, setFriendsLoading] = useState(true);
   const [connected, setConnected] = useState(true);
   const [showAddFriend, setShowAddFriend] = useState(false);
 
@@ -46,6 +47,7 @@ export default function FriendsPage() {
 
   // Load friends list and subscribe to real-time updates
   const loadFriends = useCallback(async (userId: string) => {
+    setFriendsLoading(true);
     // Get accepted friend connections where current user is either userId or friendId
     const { data: connections, error } = await supabase
       .from('friend_connections')
@@ -53,7 +55,10 @@ export default function FriendsPage() {
       .eq('status', 'accepted')
       .or(`user_id.eq.${userId},friend_id.eq.${userId}`);
 
-    if (error || !connections) return;
+    if (error || !connections) {
+      setFriendsLoading(false);
+      return;
+    }
 
     // Extract friend IDs
     const friendIds = connections.map((conn) =>
@@ -62,6 +67,7 @@ export default function FriendsPage() {
 
     if (friendIds.length === 0) {
       setFriends([]);
+      setFriendsLoading(false);
       return;
     }
 
@@ -103,35 +109,36 @@ export default function FriendsPage() {
     }));
 
     setFriends(friendProgressList);
+    setFriendsLoading(false);
   }, []);
 
   useEffect(() => {
     if (!session?.user?.id) return;
 
+    let cancelled = false;
     const userId = session.user.id;
     loadFriends(userId);
 
     // Subscribe to real-time changes on intake_entries for friends
-    const channelName = `friends-intake-${Date.now()}`;
+    const channelName = `friends-intake-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const intakeChannel = supabase
       .channel(channelName)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'intake_entries' },
         () => {
-          // Reload friends data when any intake entry changes
-          loadFriends(userId);
+          if (!cancelled) loadFriends(userId);
         }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'profiles' },
         () => {
-          // Reload friends data when any profile changes (goal/streak updates)
-          loadFriends(userId);
+          if (!cancelled) loadFriends(userId);
         }
       )
       .subscribe((status) => {
+        if (cancelled) return;
         if (status === 'SUBSCRIBED') {
           setConnected(true);
         } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
@@ -140,7 +147,8 @@ export default function FriendsPage() {
       });
 
     return () => {
-      supabase.removeChannel(intakeChannel);
+      cancelled = true;
+      supabase.removeChannel(intakeChannel).catch(() => {});
     };
   }, [session, loadFriends]);
 
@@ -189,7 +197,9 @@ export default function FriendsPage() {
         <h2 className="text-sm font-bold text-foreground mb-3 uppercase tracking-wide">
           Activity
         </h2>
-        {friends.length === 0 ? (
+        {friendsLoading ? (
+          <p className="text-xs text-muted animate-pulse">Loading...</p>
+        ) : friends.length === 0 ? (
           <p className="text-xs text-muted">
             No friends yet. Search for users or share your invite link below.
           </p>

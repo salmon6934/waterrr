@@ -1,5 +1,6 @@
 'use client';
 
+import { motion } from 'framer-motion';
 import { FriendProgress } from '@/lib/types';
 
 interface FriendCardProps {
@@ -24,10 +25,12 @@ export default function FriendCard({ friend }: FriendCardProps) {
       </div>
 
       {/* Progress bar */}
-      <div className="w-full h-3 border border-border bg-background mb-2">
-        <div
-          className="h-full bg-foreground transition-all duration-300"
-          style={{ width: `${percentage}%` }}
+      <div className="w-full h-3 border border-border bg-background mb-2 overflow-hidden">
+        <motion.div
+          className="h-full bg-foreground"
+          initial={{ width: 0 }}
+          animate={{ width: `${percentage}%` }}
+          transition={{ duration: 0.6, ease: 'easeOut' }}
         />
       </div>
 

@@ -2,12 +2,26 @@ import { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 
 /**
- * Sends a magic link to the provided email address for passwordless authentication.
+ * Signs up a new user with email and password.
  * @param email - The user's email address
- * @throws Error if the magic link cannot be sent
+ * @param password - The user's password
+ * @throws Error if signup fails
  */
-export async function sendMagicLink(email: string): Promise<void> {
-  const { error } = await supabase.auth.signInWithOtp({ email });
+export async function signUp(email: string, password: string): Promise<void> {
+  const { error } = await supabase.auth.signUp({ email, password });
+  if (error) {
+    throw error;
+  }
+}
+
+/**
+ * Signs in a user with email and password.
+ * @param email - The user's email address
+ * @param password - The user's password
+ * @throws Error if sign in fails
+ */
+export async function signIn(email: string, password: string): Promise<void> {
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
     throw error;
   }
