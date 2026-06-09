@@ -162,7 +162,7 @@ export default function ReminderForm() {
       {/* Interval Selector */}
       <fieldset className="space-y-2" disabled={!schedule.enabled}>
         <legend className="text-sm font-mono text-muted">
-          Every
+          Every <span className="font-bold text-foreground">{schedule.intervalMinutes}m</span>
         </legend>
         <div className="grid grid-cols-4 gap-2">
           {INTERVAL_OPTIONS.map((interval) => (

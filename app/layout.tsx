@@ -95,6 +95,7 @@ export default function RootLayout({
       <head>
         <title>Waterrr</title>
         <meta name="description" content="Track your daily water intake and stay hydrated" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
       </head>
       <body className="max-w-[390px] mx-auto bg-background text-foreground">
         {loading ? null : !session ? (

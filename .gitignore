@@ -51,8 +51,11 @@ next-env.d.ts
 .playwright-mcp/
 
 # personal notes
+Progress.md
 PROGRESS.md
 FRONTENDDESIGN.md
+PRODUCT_DOCUMENTATION.md
+PROJECT_DOCUMENTATION.md
 
 # images
 icon-foreground.svg

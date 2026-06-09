@@ -20,6 +20,45 @@ body {
   color: var(--foreground);
   background: var(--background);
   font-family: "Space Mono", monospace;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+input, textarea {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
+/* Prevent sticky focus/hover after tap — active state still fires normally */
+button, a, [role="button"] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus, a:focus, [role="button"]:focus {
+  outline: none;
+}
+
+@media (hover: none) {
+  button:not(:active):hover,
+  a:not(:active):hover,
+  [role="button"]:not(:active):hover {
+    background-color: inherit;
+    color: inherit;
+  }
+
+  button:not(:active):focus,
+  a:not(:active):focus,
+  [role="button"]:not(:active):focus {
+    background-color: inherit;
+    color: inherit;
+  }
 }
 
 @keyframes shimmer {
