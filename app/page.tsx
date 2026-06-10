@@ -210,9 +210,9 @@ export default function Home() {
   const totalIntake = calculateTotalIntake(entries);
 
   return (
-    <main className="flex min-h-screen flex-col items-center px-4 py-8 pb-24 gap-6">
+    <main className="flex h-screen flex-col items-center px-4 py-8 pb-24 gap-6 overflow-hidden">
       {/* Progress Ring and Streak */}
-      <div className="flex flex-col items-center gap-3">
+      <div className="flex flex-col items-center gap-3 shrink-0">
         <ProgressRing current={totalIntake} goal={goal} />
         <StreakCounter streak={streak} />
         <p className="font-mono text-sm text-muted">
@@ -221,7 +221,7 @@ export default function Home() {
       </div>
 
       {/* Quick Add Buttons */}
-      <div className="flex flex-wrap items-center justify-center gap-3">
+      <div className="flex flex-wrap items-center justify-center gap-3 shrink-0">
         {PRESET_VOLUMES.map((volume) => (
           <QuickAddButton key={volume} volume={volume} onAdd={handleAddIntake} />
         ))}
@@ -241,13 +241,13 @@ export default function Home() {
         onAdd={handleAddIntake}
       />
 
-      {/* Daily Log */}
-      <div className="w-full max-w-sm">
-        <DailyLog entries={entries} onDelete={handleDeleteEntry} />
+      {/* Daily Log — header stays fixed, entries scroll */}
+      <div className="w-full max-w-sm flex-1 min-h-0 flex flex-col">
+        <h2 className="font-mono text-sm text-muted mb-2 shrink-0">Today&apos;s Log</h2>
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <DailyLog entries={entries} onDelete={handleDeleteEntry} />
+        </div>
       </div>
-
-      {/* End marker */}
-      <p className="font-mono text-xs text-muted">that&apos;s the end of it</p>
     </main>
   );
 }

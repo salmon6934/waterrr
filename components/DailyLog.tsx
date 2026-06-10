@@ -28,7 +28,6 @@ export default function DailyLog({ entries, onDelete }: DailyLogProps) {
 
   return (
     <div className="w-full">
-      <h2 className="font-mono text-sm text-muted mb-2">Today&apos;s Log</h2>
       {sorted.length === 0 ? (
         <p className="font-mono text-sm text-muted">No entries yet.</p>
       ) : (
