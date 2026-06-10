@@ -16,6 +16,15 @@
   --border: #fff;
 }
 
+/* Hide scrollbar across browsers */
+* {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+*::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
 body {
   color: var(--foreground);
   background: var(--background);
