@@ -6,6 +6,7 @@
 
 import { supabase } from './supabase';
 import { UserProfile, FriendConnection, IntakeEntry } from './types';
+import { getISTDayStartUTC, getISTDayEndUTC } from './timezone';
 
 /** Feature identifiers for access gating. */
 export type Feature = 'intake' | 'reminders' | 'theme' | 'friends' | 'friend-progress';
@@ -464,22 +465,21 @@ export function formatIntakeEntry(entry: IntakeEntry): string {
 }
 
 /**
- * Gets a close friend's intake entries for today (UTC), limited to 50,
+ * Gets a close friend's intake entries for today (IST), limited to 50,
  * ordered by most recent first.
  * @param friendId - The close friend's user ID
  * @returns Array of IntakeEntry objects for today
  */
 export async function getCloseFriendIntakeEntries(friendId: string): Promise<IntakeEntry[]> {
-  const now = new Date();
-  const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  const todayEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+  const todayStart = getISTDayStartUTC();
+  const todayEnd = getISTDayEndUTC();
 
   const { data, error } = await supabase
     .from('intake_entries')
     .select('id, volume, timestamp, user_id')
     .eq('user_id', friendId)
-    .gte('timestamp', todayStart.toISOString())
-    .lt('timestamp', todayEnd.toISOString())
+    .gte('timestamp', todayStart)
+    .lt('timestamp', todayEnd)
     .order('timestamp', { ascending: false })
     .limit(50);
 

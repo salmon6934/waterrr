@@ -1,4 +1,5 @@
 import { IntakeEntry } from './types';
+import { isISTToday } from './timezone';
 
 /**
  * Calculates the total intake volume from a list of entries.
@@ -32,18 +33,12 @@ export function sortEntriesChronologically(entries: IntakeEntry[]): IntakeEntry[
 }
 
 /**
- * Checks if an ISO 8601 timestamp falls on the current calendar date.
+ * Checks if an ISO 8601 timestamp falls on the current calendar date (IST).
  * @param timestamp - ISO 8601 datetime string
- * @returns true if the timestamp is today's date
+ * @returns true if the timestamp is today's date in IST
  */
 export function isToday(timestamp: string): boolean {
-  const entryDate = new Date(timestamp);
-  const now = new Date();
-  return (
-    entryDate.getFullYear() === now.getFullYear() &&
-    entryDate.getMonth() === now.getMonth() &&
-    entryDate.getDate() === now.getDate()
-  );
+  return isISTToday(timestamp);
 }
 
 /**

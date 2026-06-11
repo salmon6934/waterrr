@@ -29,6 +29,7 @@ import { PRESET_VOLUMES } from '@/lib/constants';
 import { IntakeEntry } from '@/lib/types';
 import { supabase } from '@/lib/supabase';
 import { getSession } from '@/lib/auth';
+import { getISTTimestamp } from '@/lib/timezone';
 
 export default function Home() {
   const [entries, setEntries] = useState<IntakeEntry[]>([]);
@@ -102,7 +103,7 @@ export default function Home() {
       const newEntry: IntakeEntry = {
         id: crypto.randomUUID(),
         volume,
-        timestamp: new Date().toISOString(),
+        timestamp: getISTTimestamp(),
       };
 
       // Save to localStorage

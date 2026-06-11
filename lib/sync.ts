@@ -20,6 +20,7 @@ import {
 } from './storage';
 import { STORAGE_KEYS } from './constants';
 import { IntakeEntry, DailyGoal, StreakData } from './types';
+import { getISTDayStartUTC, getISTDayEndUTC } from './timezone';
 
 /**
  * Syncs all local intake entries to Supabase intake_entries table.
@@ -83,23 +84,14 @@ export async function syncStreakToSupabase(userId: string): Promise<void> {
 }
 
 /**
- * Loads intake entries from Supabase for the current day.
+ * Loads intake entries from Supabase for the current day (IST).
  * Used as a fallback when localStorage is unavailable or corrupted.
  */
 export async function loadIntakeEntriesFromSupabase(
   userId: string
 ): Promise<IntakeEntry[]> {
-  const today = new Date();
-  const startOfDay = new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate()
-  ).toISOString();
-  const endOfDay = new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate() + 1
-  ).toISOString();
+  const startOfDay = getISTDayStartUTC();
+  const endOfDay = getISTDayEndUTC();
 
   const { data, error } = await supabase
     .from('intake_entries')

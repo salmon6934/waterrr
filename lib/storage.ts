@@ -12,6 +12,7 @@ import {
   StreakData,
 } from './types';
 import { DEFAULT_DAILY_GOAL, STORAGE_KEYS } from './constants';
+import { getISTDateString } from './timezone';
 
 // --- Intake Entries ---
 
@@ -198,24 +199,18 @@ export function loadStreakData(): StreakData {
 // --- Utilities ---
 
 /**
- * Filters intake entries to only those whose timestamp falls within the given calendar date.
+ * Filters intake entries to only those whose timestamp falls within the given calendar date (IST).
  * This is a pure function suitable for unit/property testing.
  */
 export function filterEntriesByDate(
   entries: IntakeEntry[],
   date: Date
 ): IntakeEntry[] {
-  const year = date.getFullYear();
-  const month = date.getMonth();
-  const day = date.getDate();
+  const targetDateStr = getISTDateString(date);
 
   return entries.filter((entry) => {
-    const entryDate = new Date(entry.timestamp);
-    return (
-      entryDate.getFullYear() === year &&
-      entryDate.getMonth() === month &&
-      entryDate.getDate() === day
-    );
+    const entryDateStr = getISTDateString(new Date(entry.timestamp));
+    return entryDateStr === targetDateStr;
   });
 }
 
