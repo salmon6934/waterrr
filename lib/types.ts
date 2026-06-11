@@ -61,3 +61,42 @@ export interface StreakData {
 export interface ThemePreference {
   mode: 'light' | 'dark';
 }
+
+/** A close friend relationship. */
+export interface CloseFriend {
+  userId: string;
+  friendId: string;
+  createdAt: string;
+}
+
+/** A device registration for push notifications. */
+export interface DeviceToken {
+  id: string;
+  userId: string;
+  token: string;
+  createdAt: string;
+}
+
+/** A nudge record between two users. */
+export interface Nudge {
+  id: string;
+  senderId: string;
+  receiverId: string;
+  sentAt: string;
+}
+
+/** A close friend intake notification record for rate limiting. */
+export interface CloseFriendNotification {
+  id: string;
+  loggerId: string;
+  recipientId: string;
+  sentAt: string;
+}
+
+/** Extended FriendProgress with social enhancement metadata. */
+export interface EnhancedFriendProgress extends FriendProgress {
+  isCloseFriend: boolean;
+  lastIntakeTimestamp: string | null;
+  hasDeviceToken: boolean;
+  nudgeCooldownExpiresAt: string | null;
+}

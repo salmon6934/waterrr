@@ -4,8 +4,17 @@ import { useEffect, useState, useCallback } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { getSession, onAuthStateChange } from '@/lib/auth';
-import { canAccessFeature } from '@/lib/friends';
-import { FriendProgress } from '@/lib/types';
+import {
+  canAccessFeature,
+  addCloseFriend,
+  removeCloseFriend,
+  removeFriend,
+  getCloseFriends,
+  getNudgeCooldown,
+  sendNudge,
+  getCloseFriendIntakeEntries,
+} from '@/lib/friends';
+import { EnhancedFriendProgress, IntakeEntry } from '@/lib/types';
 import FriendCard from '@/components/FriendCard';
 import FriendSearch from '@/components/FriendSearch';
 import InviteShare from '@/components/InviteShare';
@@ -14,10 +23,14 @@ import PendingRequests from '@/components/PendingRequests';
 export default function FriendsPage() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [friends, setFriends] = useState<FriendProgress[]>([]);
+  const [friends, setFriends] = useState<EnhancedFriendProgress[]>([]);
   const [friendsLoading, setFriendsLoading] = useState(true);
   const [connected, setConnected] = useState(true);
   const [showAddFriend, setShowAddFriend] = useState(false);
+  const [intakeEntriesMap, setIntakeEntriesMap] = useState<Record<string, IntakeEntry[]>>({});
+  const [intakeEntriesLoading, setIntakeEntriesLoading] = useState<Record<string, boolean>>({});
+  const [intakeEntriesError, setIntakeEntriesError] = useState<Record<string, string | null>>({});
+  const [connectionIdMap, setConnectionIdMap] = useState<Record<string, string>>({});
 
   // Load session on mount and listen for auth changes
   useEffect(() => {
@@ -45,13 +58,14 @@ export default function FriendsPage() {
     };
   }, []);
 
-  // Load friends list and subscribe to real-time updates
+  // Load friends list with enhanced data
   const loadFriends = useCallback(async (userId: string) => {
     setFriendsLoading(true);
+
     // Get accepted friend connections where current user is either userId or friendId
     const { data: connections, error } = await supabase
       .from('friend_connections')
-      .select('user_id, friend_id')
+      .select('id, user_id, friend_id')
       .eq('status', 'accepted')
       .or(`user_id.eq.${userId},friend_id.eq.${userId}`);
 
@@ -60,10 +74,14 @@ export default function FriendsPage() {
       return;
     }
 
-    // Extract friend IDs
-    const friendIds = connections.map((conn) =>
-      conn.user_id === userId ? conn.friend_id : conn.user_id
-    );
+    // Extract friend IDs and build connection ID map
+    const friendIds: string[] = [];
+    const connIdMap: Record<string, string> = {};
+    for (const conn of connections) {
+      const friendId = conn.user_id === userId ? conn.friend_id : conn.user_id;
+      friendIds.push(friendId);
+      connIdMap[friendId] = conn.id;
+    }
 
     if (friendIds.length === 0) {
       setFriends([]);
@@ -77,7 +95,10 @@ export default function FriendsPage() {
       .select('id, username, daily_goal, current_streak')
       .in('id', friendIds);
 
-    if (!profiles) return;
+    if (!profiles) {
+      setFriendsLoading(false);
+      return;
+    }
 
     // Load today's intake for each friend
     const today = new Date();
@@ -91,7 +112,7 @@ export default function FriendsPage() {
       .gte('timestamp', startOfDay)
       .lt('timestamp', endOfDay);
 
-    // Build intake map
+    // Build intake map for today's totals
     const intakeMap: Record<string, number> = {};
     if (intakeEntries) {
       for (const entry of intakeEntries) {
@@ -99,17 +120,94 @@ export default function FriendsPage() {
       }
     }
 
-    // Build FriendProgress list
-    const friendProgressList: FriendProgress[] = profiles.map((profile) => ({
+    // Query close friends for current user
+    const closeFriendIds = await getCloseFriends(userId);
+    const closeFriendSet = new Set(closeFriendIds);
+
+    // Get last intake timestamp for each friend (most recent entry)
+    const lastIntakeTimestamps: Record<string, string | null> = {};
+    await Promise.all(
+      friendIds.map(async (friendId) => {
+        const { data } = await supabase
+          .from('intake_entries')
+          .select('timestamp')
+          .eq('user_id', friendId)
+          .order('timestamp', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        lastIntakeTimestamps[friendId] = data?.timestamp ?? null;
+      })
+    );
+
+    // Check device token existence for each friend
+    const hasDeviceTokenMap: Record<string, boolean> = {};
+    await Promise.all(
+      friendIds.map(async (friendId) => {
+        const { count } = await supabase
+          .from('device_tokens')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', friendId);
+        hasDeviceTokenMap[friendId] = (count ?? 0) > 0;
+      })
+    );
+
+    // Get nudge cooldown info for each friend
+    const nudgeCooldowns: Record<string, string | null> = {};
+    await Promise.all(
+      friendIds.map(async (friendId) => {
+        const cooldown = await getNudgeCooldown(userId, friendId);
+        nudgeCooldowns[friendId] = cooldown.expiresAt;
+      })
+    );
+
+    // Build EnhancedFriendProgress list
+    const enhancedFriends: EnhancedFriendProgress[] = profiles.map((profile) => ({
       userId: profile.id,
       username: profile.username,
       currentIntake: intakeMap[profile.id] || 0,
       dailyGoal: profile.daily_goal,
       currentStreak: profile.current_streak || 0,
+      isCloseFriend: closeFriendSet.has(profile.id),
+      lastIntakeTimestamp: lastIntakeTimestamps[profile.id] ?? null,
+      hasDeviceToken: hasDeviceTokenMap[profile.id] ?? false,
+      nudgeCooldownExpiresAt: nudgeCooldowns[profile.id] ?? null,
     }));
 
-    setFriends(friendProgressList);
+    setConnectionIdMap(connIdMap);
+
+    setFriends(enhancedFriends);
     setFriendsLoading(false);
+
+    // Load intake entries for close friends
+    const closeFriendEntries: Record<string, IntakeEntry[]> = {};
+    const loadingState: Record<string, boolean> = {};
+    const errorState: Record<string, string | null> = {};
+
+    for (const friendId of closeFriendIds) {
+      if (friendIds.includes(friendId)) {
+        loadingState[friendId] = true;
+      }
+    }
+    setIntakeEntriesLoading(loadingState);
+
+    await Promise.all(
+      closeFriendIds
+        .filter((friendId) => friendIds.includes(friendId))
+        .map(async (friendId) => {
+          try {
+            const entries = await getCloseFriendIntakeEntries(friendId);
+            closeFriendEntries[friendId] = entries;
+            errorState[friendId] = null;
+          } catch {
+            closeFriendEntries[friendId] = [];
+            errorState[friendId] = 'Could not load entries';
+          }
+        })
+    );
+
+    setIntakeEntriesMap(closeFriendEntries);
+    setIntakeEntriesLoading({});
+    setIntakeEntriesError(errorState);
   }, []);
 
   useEffect(() => {
@@ -119,9 +217,9 @@ export default function FriendsPage() {
     const userId = session.user.id;
     loadFriends(userId);
 
-    // Subscribe to real-time changes on intake_entries for friends
-    const channelName = `friends-intake-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const intakeChannel = supabase
+    // Subscribe to real-time changes on intake_entries, profiles, close_friends, and nudges
+    const channelName = `friends-enhanced-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const channel = supabase
       .channel(channelName)
       .on(
         'postgres_changes',
@@ -137,6 +235,20 @@ export default function FriendsPage() {
           if (!cancelled) loadFriends(userId);
         }
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'close_friends' },
+        () => {
+          if (!cancelled) loadFriends(userId);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'nudges' },
+        () => {
+          if (!cancelled) loadFriends(userId);
+        }
+      )
       .subscribe((status) => {
         if (cancelled) return;
         if (status === 'SUBSCRIBED') {
@@ -148,9 +260,36 @@ export default function FriendsPage() {
 
     return () => {
       cancelled = true;
-      supabase.removeChannel(intakeChannel).catch(() => {});
+      supabase.removeChannel(channel).catch(() => {});
     };
   }, [session, loadFriends]);
+
+  // Action handlers
+  const handleMarkCloseFriend = async (friendId: string) => {
+    if (!session?.user?.id) return;
+    await addCloseFriend(session.user.id, friendId);
+    await loadFriends(session.user.id);
+  };
+
+  const handleRemoveCloseFriend = async (friendId: string) => {
+    if (!session?.user?.id) return;
+    await removeCloseFriend(session.user.id, friendId);
+    await loadFriends(session.user.id);
+  };
+
+  const handleRemoveFriend = async (friendId: string) => {
+    if (!session?.user?.id) return;
+    const connId = connectionIdMap[friendId];
+    if (!connId) return;
+    await removeFriend(connId);
+    await loadFriends(session.user.id);
+  };
+
+  const handleNudge = async (friendId: string) => {
+    if (!session?.user?.id) return;
+    await sendNudge(session.user.id, friendId);
+    await loadFriends(session.user.id);
+  };
 
   // Loading state
   if (loading) {
@@ -206,7 +345,17 @@ export default function FriendsPage() {
         ) : (
           <div className="flex flex-col gap-3">
             {friends.map((friend) => (
-              <FriendCard key={friend.userId} friend={friend} />
+              <FriendCard
+                key={friend.userId}
+                friend={friend}
+                intakeEntries={intakeEntriesMap[friend.userId]}
+                entriesLoading={intakeEntriesLoading[friend.userId] ?? false}
+                entriesError={intakeEntriesError[friend.userId] ?? null}
+                onMarkCloseFriend={() => handleMarkCloseFriend(friend.userId)}
+                onRemoveCloseFriend={() => handleRemoveCloseFriend(friend.userId)}
+                onRemoveFriend={() => handleRemoveFriend(friend.userId)}
+                onNudge={() => handleNudge(friend.userId)}
+              />
             ))}
           </div>
         )}

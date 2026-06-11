@@ -13,6 +13,7 @@ import { getSession, onAuthStateChange } from '../lib/auth';
 import { initBackgroundSync } from '../lib/sync';
 import { supabase } from '../lib/supabase';
 import { initNotificationListener, scheduleNotifications } from '../lib/notifications';
+import PushNotificationProvider from '../components/PushNotificationProvider';
 
 const spaceMono = Space_Mono({
   weight: ['400', '700'],
@@ -103,10 +104,10 @@ export default function RootLayout({
         ) : hasProfile === null ? null : !hasProfile ? (
           <OnboardingScreen session={session} onComplete={handleOnboardingComplete} />
         ) : (
-          <>
+          <PushNotificationProvider>
             <PageTransition>{children}</PageTransition>
             <NavBar />
-          </>
+          </PushNotificationProvider>
         )}
       </body>
     </html>

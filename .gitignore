@@ -59,3 +59,8 @@ PROJECT_DOCUMENTATION.md
 
 # images
 icon-foreground.svg
+
+# test folders
+__mocks__/
+__tests__/
+vitest.config.ts

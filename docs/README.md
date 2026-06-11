@@ -23,7 +23,9 @@
 | [Water Intake Tracking](./features/INTAKE_TRACKING.md) | Core intake logging, progress calculation, and daily goals |
 | [Streaks](./features/STREAKS.md) | Streak logic, continuity validation, and persistence |
 | [Friends & Social](./features/FRIENDS.md) | Friend connections, real-time activity, and invite links |
-| [Notifications](./features/NOTIFICATIONS.md) | Local notification scheduling and Capacitor integration |
+| [Push Notifications](./features/PUSH_NOTIFICATIONS.md) | Firebase Cloud Messaging, device tokens, and notification delivery |
+| [Close Friends & Nudges](./features/CLOSE_FRIENDS.md) | Close friend designation, intake visibility, nudge system |
+| [Local Notifications](./features/NOTIFICATIONS.md) | Local notification scheduling and Capacitor integration |
 | [Mobile Native](./features/MOBILE.md) | Capacitor setup, native plugins, and Android-specific behavior |
 
 ---
@@ -32,18 +34,20 @@
 
 ```
 docs/
-├── README.md              ← You are here
-├── SETUP.md               ← Getting started
-├── ARCHITECTURE.md        ← System design
-├── STATE_MANAGEMENT.md    ← Data flow & sync
-├── TESTING.md             ← Test strategy
-├── DATABASE.md            ← Schema & policies
-├── DEPLOYMENT.md          ← Build & release
+├── README.md                 ← You are here
+├── SETUP.md                  ← Getting started
+├── ARCHITECTURE.md           ← System design
+├── STATE_MANAGEMENT.md       ← Data flow & sync
+├── TESTING.md                ← Test strategy
+├── DATABASE.md               ← Schema & policies
+├── DEPLOYMENT.md             ← Build & release
 └── features/
-    ├── AUTHENTICATION.md  ← Auth system
-    ├── INTAKE_TRACKING.md ← Core feature
-    ├── STREAKS.md         ← Streak logic
-    ├── FRIENDS.md         ← Social features
-    ├── NOTIFICATIONS.md   ← Reminders
-    └── MOBILE.md          ← Native mobile
+    ├── AUTHENTICATION.md     ← Auth system
+    ├── INTAKE_TRACKING.md    ← Core feature
+    ├── STREAKS.md            ← Streak logic
+    ├── FRIENDS.md            ← Social features
+    ├── PUSH_NOTIFICATIONS.md ← FCM push system
+    ├── CLOSE_FRIENDS.md      ← Close friends & nudges
+    ├── NOTIFICATIONS.md      ← Local reminders
+    └── MOBILE.md             ← Native mobile
 ```

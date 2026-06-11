@@ -2,7 +2,7 @@
 
 ## Provider
 
-[Supabase](https://supabase.com) — managed PostgreSQL with built-in Auth, Realtime, and Row Level Security.
+[Supabase](https://supabase.com) — managed PostgreSQL with built-in Auth, Realtime, Row Level Security, and Edge Functions.
 
 ## Schema
 
@@ -29,7 +29,7 @@ Individual water intake logs. Many rows per user per day.
 | `id` | `uuid` | PK | Entry ID (generated client-side) |
 | `user_id` | `uuid` | FK → profiles.id, NOT NULL | Owner of this entry |
 | `volume` | `integer` | CHECK (1 ≤ volume ≤ 5000) | Amount of water in ml |
-| `timestamp` | `bigint` | NOT NULL | Unix timestamp (ms) when logged |
+| `timestamp` | `text` | NOT NULL | ISO 8601 datetime string |
 
 ### `friend_connections`
 
@@ -43,6 +43,51 @@ Directional friend request records. Status transitions from `pending` → `accep
 | `status` | `text` | CHECK (status IN ('pending', 'accepted')) | Connection state |
 | `created_at` | `timestamptz` | DEFAULT now() | Request timestamp |
 | — | — | UNIQUE(user_id, friend_id) | Prevent duplicate requests |
+
+### `close_friends`
+
+Close friend designations. Allows viewing detailed intake entries.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `user_id` | `uuid` | FK → auth.users, PK part 1 | User who designated the close friend |
+| `friend_id` | `uuid` | FK → auth.users, PK part 2 | The friend designated as close |
+| `created_at` | `timestamptz` | DEFAULT now() | When designation was made |
+
+**Primary Key:** (`user_id`, `friend_id`)
+
+### `device_tokens`
+
+FCM device registrations for push notification delivery.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `uuid` | PK, DEFAULT gen_random_uuid() | Token record ID |
+| `user_id` | `uuid` | FK → auth.users, NOT NULL | Token owner |
+| `token` | `text` | NOT NULL, UNIQUE | FCM registration token |
+| `created_at` | `timestamptz` | DEFAULT now() | Registration timestamp |
+
+### `nudges`
+
+Nudge notification records with cooldown tracking (24h between nudges per pair).
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `uuid` | PK, DEFAULT gen_random_uuid() | Nudge record ID |
+| `sender_id` | `uuid` | FK → auth.users, NOT NULL | User who sent the nudge |
+| `receiver_id` | `uuid` | FK → auth.users, NOT NULL | User who received the nudge |
+| `sent_at` | `timestamptz` | DEFAULT now(), NOT NULL | When the nudge was sent |
+
+### `close_friend_notifications`
+
+Rate-limiting records for close friend intake notifications (60-min window per pair).
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `uuid` | PK, DEFAULT gen_random_uuid() | Notification record ID |
+| `logger_id` | `uuid` | FK → auth.users, NOT NULL | User who logged water |
+| `recipient_id` | `uuid` | FK → auth.users, NOT NULL | User who received notification |
+| `sent_at` | `timestamptz` | DEFAULT now(), NOT NULL | When notification was sent |
 
 ## Row Level Security (RLS)
 
@@ -72,6 +117,46 @@ All tables have RLS enabled. Policies enforce data isolation at the database lev
 | SELECT | Participants (`auth.uid() IN (user_id, friend_id)`) |
 | INSERT | Sender (`auth.uid() = user_id`) |
 | UPDATE | Receiver can accept (`auth.uid() = friend_id`) |
+| DELETE | Participants can delete |
+
+### close_friends
+
+| Operation | Policy |
+|-----------|--------|
+| SELECT | Owner (`auth.uid() = user_id`) |
+| INSERT | Owner (`auth.uid() = user_id`) |
+| DELETE | Owner (`auth.uid() = user_id`) |
+
+### device_tokens
+
+| Operation | Policy |
+|-----------|--------|
+| SELECT | Owner (`auth.uid() = user_id`) |
+| INSERT | Owner (`auth.uid() = user_id`) |
+| UPDATE | Owner (`auth.uid() = user_id`) |
+| DELETE | Owner (`auth.uid() = user_id`) |
+| Service role | Full read access (Edge Functions) |
+
+### nudges
+
+| Operation | Policy |
+|-----------|--------|
+| SELECT | Participants (`auth.uid() IN (sender_id, receiver_id)`) |
+| INSERT | Service role only (via Edge Function) |
+
+### close_friend_notifications
+
+| Operation | Policy |
+|-----------|--------|
+| SELECT | Recipient (`auth.uid() = recipient_id`) |
+| INSERT | Service role only (via Edge Function) |
+
+## Database Webhooks
+
+| Trigger | Table | Event | Target Edge Function |
+|---------|-------|-------|---------------------|
+| Friend request notification | `friend_connections` | INSERT | `send-push-notification` |
+| Close friend intake notification | `intake_entries` | INSERT | `send-close-friend-intake-notification` |
 
 ## Realtime
 
@@ -80,11 +165,9 @@ Realtime subscriptions are enabled on:
 - `intake_entries` — powers live friend activity updates
 - `profiles` — powers live streak/goal updates for friends
 
-Clients subscribe via Supabase channels with PostgreSQL CDC (Change Data Capture).
+Clients subscribe via Supabase channels with PostgreSQL CDC (Change Data Capture). The `lib/realtime.ts` module manages subscriptions with auto-reconnect and connectivity status tracking.
 
 ## Indexes
-
-Recommended indexes for production performance:
 
 ```sql
 CREATE INDEX idx_intake_entries_user_id ON intake_entries(user_id);
@@ -92,6 +175,9 @@ CREATE INDEX idx_intake_entries_timestamp ON intake_entries(timestamp);
 CREATE INDEX idx_friend_connections_user_id ON friend_connections(user_id);
 CREATE INDEX idx_friend_connections_friend_id ON friend_connections(friend_id);
 CREATE INDEX idx_friend_connections_status ON friend_connections(status);
+CREATE INDEX idx_device_tokens_user_id ON device_tokens(user_id);
+CREATE INDEX idx_nudges_sender_receiver ON nudges(sender_id, receiver_id, sent_at DESC);
+CREATE INDEX idx_cf_notifications_pair ON close_friend_notifications(logger_id, recipient_id, sent_at DESC);
 ```
 
 ## Migrations
