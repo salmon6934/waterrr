@@ -414,6 +414,7 @@ export async function removeCloseFriend(userId: string, friendId: string): Promi
 
 /**
  * Gets the list of close friend IDs for a user.
+ * These are the friends that the user has marked as close (granting them access to user's entries).
  * @param userId - The user whose close friends to retrieve
  * @returns Array of friend user IDs designated as close friends
  */
@@ -428,6 +429,25 @@ export async function getCloseFriends(userId: string): Promise<string[]> {
   }
 
   return (data || []).map((row) => row.friend_id);
+}
+
+/**
+ * Gets the list of user IDs who have marked the given user as their close friend.
+ * These are friends who have granted access to view their entries.
+ * @param userId - The user to check
+ * @returns Array of user IDs who marked this user as a close friend
+ */
+export async function getWhoMarkedMeClose(userId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('close_friends')
+    .select('user_id')
+    .eq('friend_id', userId);
+
+  if (error) {
+    throw new Error(`Failed to get who marked me close: ${error.message}`);
+  }
+
+  return (data || []).map((row) => row.user_id);
 }
 
 /**

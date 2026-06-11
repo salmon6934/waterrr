@@ -50,7 +50,9 @@ export default function FriendCard({
     currentIntake,
     dailyGoal,
     currentStreak,
-    isCloseFriend,
+    iMarkedThemClose,
+    theyMarkedMeClose,
+    isMutualCloseFriend,
     lastIntakeTimestamp,
     hasDeviceToken,
     nudgeCooldownExpiresAt,
@@ -109,8 +111,8 @@ export default function FriendCard({
       >
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-bold text-foreground">
-            {isCloseFriend && (
-              <span className="mr-1" aria-label="Close friend">
+            {isMutualCloseFriend && (
+              <span className="mr-1" aria-label="Mutual close friend">
                 💧
               </span>
             )}
@@ -150,28 +152,28 @@ export default function FriendCard({
             className="overflow-hidden"
           >
             <div className="mt-4 pt-4 border-t border-border space-y-3">
-              {/* Close friend expanded content */}
-              {isCloseFriend && (
-                <>
-                  <IntakeEntryList
-                    entries={intakeEntries}
-                    loading={entriesLoading}
-                    error={entriesError}
-                  />
-                  {onRemoveCloseFriend && (
-                    <button
-                      type="button"
-                      onClick={onRemoveCloseFriend}
-                      className="w-full border border-border px-3 py-1.5 text-xs text-foreground hover:bg-foreground hover:text-background transition-colors"
-                    >
-                      Remove Close Friend
-                    </button>
-                  )}
-                </>
+              {/* Show intake entries if they marked me as close (I can see their entries) */}
+              {theyMarkedMeClose && (
+                <IntakeEntryList
+                  entries={intakeEntries}
+                  loading={entriesLoading}
+                  error={entriesError}
+                />
               )}
 
-              {/* Non-close friend expanded content */}
-              {!isCloseFriend && onMarkCloseFriend && (
+              {/* Show "Remove Close Friend" if I marked them */}
+              {iMarkedThemClose && onRemoveCloseFriend && (
+                <button
+                  type="button"
+                  onClick={onRemoveCloseFriend}
+                  className="w-full border border-border px-3 py-1.5 text-xs text-foreground hover:bg-foreground hover:text-background transition-colors"
+                >
+                  Remove Close Friend
+                </button>
+              )}
+
+              {/* Show "Mark as Close Friend" if I haven't marked them yet */}
+              {!iMarkedThemClose && onMarkCloseFriend && (
                 <button
                   type="button"
                   onClick={onMarkCloseFriend}

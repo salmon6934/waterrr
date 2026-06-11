@@ -95,6 +95,13 @@ export interface CloseFriendNotification {
 
 /** Extended FriendProgress with social enhancement metadata. */
 export interface EnhancedFriendProgress extends FriendProgress {
+  /** Whether I have marked this friend as close (granting them access to MY entries) */
+  iMarkedThemClose: boolean;
+  /** Whether this friend has marked ME as close (granting me access to THEIR entries) */
+  theyMarkedMeClose: boolean;
+  /** Whether both users have marked each other as close (mutual) — shows water droplet icon */
+  isMutualCloseFriend: boolean;
+  /** @deprecated Use iMarkedThemClose instead */
   isCloseFriend: boolean;
   lastIntakeTimestamp: string | null;
   hasDeviceToken: boolean;

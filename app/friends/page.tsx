@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { getSession, onAuthStateChange } from '@/lib/auth';
@@ -10,6 +11,7 @@ import {
   removeCloseFriend,
   removeFriend,
   getCloseFriends,
+  getWhoMarkedMeClose,
   getNudgeCooldown,
   sendNudge,
   getCloseFriendIntakeEntries,
@@ -120,9 +122,13 @@ export default function FriendsPage() {
       }
     }
 
-    // Query close friends for current user
-    const closeFriendIds = await getCloseFriends(userId);
-    const closeFriendSet = new Set(closeFriendIds);
+    // Query close friends: who I marked as close (I grant them access to MY entries)
+    const iMarkedCloseIds = await getCloseFriends(userId);
+    const iMarkedCloseSet = new Set(iMarkedCloseIds);
+
+    // Query reverse: who marked ME as close (they grant me access to THEIR entries)
+    const theyMarkedMeCloseIds = await getWhoMarkedMeClose(userId);
+    const theyMarkedMeCloseSet = new Set(theyMarkedMeCloseIds);
 
     // Get last intake timestamp for each friend (most recent entry)
     const lastIntakeTimestamps: Record<string, string | null> = {};
@@ -161,48 +167,53 @@ export default function FriendsPage() {
     );
 
     // Build EnhancedFriendProgress list
-    const enhancedFriends: EnhancedFriendProgress[] = profiles.map((profile) => ({
-      userId: profile.id,
-      username: profile.username,
-      currentIntake: intakeMap[profile.id] || 0,
-      dailyGoal: profile.daily_goal,
-      currentStreak: profile.current_streak || 0,
-      isCloseFriend: closeFriendSet.has(profile.id),
-      lastIntakeTimestamp: lastIntakeTimestamps[profile.id] ?? null,
-      hasDeviceToken: hasDeviceTokenMap[profile.id] ?? false,
-      nudgeCooldownExpiresAt: nudgeCooldowns[profile.id] ?? null,
-    }));
+    const enhancedFriends: EnhancedFriendProgress[] = profiles.map((profile) => {
+      const iMarkedThem = iMarkedCloseSet.has(profile.id);
+      const theyMarkedMe = theyMarkedMeCloseSet.has(profile.id);
+      return {
+        userId: profile.id,
+        username: profile.username,
+        currentIntake: intakeMap[profile.id] || 0,
+        dailyGoal: profile.daily_goal,
+        currentStreak: profile.current_streak || 0,
+        isCloseFriend: iMarkedThem, // kept for backward compat
+        iMarkedThemClose: iMarkedThem,
+        theyMarkedMeClose: theyMarkedMe,
+        isMutualCloseFriend: iMarkedThem && theyMarkedMe,
+        lastIntakeTimestamp: lastIntakeTimestamps[profile.id] ?? null,
+        hasDeviceToken: hasDeviceTokenMap[profile.id] ?? false,
+        nudgeCooldownExpiresAt: nudgeCooldowns[profile.id] ?? null,
+      };
+    });
 
     setConnectionIdMap(connIdMap);
 
     setFriends(enhancedFriends);
     setFriendsLoading(false);
 
-    // Load intake entries for close friends
+    // Load intake entries for friends who marked me as close (I can see their entries)
     const closeFriendEntries: Record<string, IntakeEntry[]> = {};
     const loadingState: Record<string, boolean> = {};
     const errorState: Record<string, string | null> = {};
 
-    for (const friendId of closeFriendIds) {
-      if (friendIds.includes(friendId)) {
-        loadingState[friendId] = true;
-      }
+    const canViewEntriesFor = theyMarkedMeCloseIds.filter((id) => friendIds.includes(id));
+
+    for (const friendId of canViewEntriesFor) {
+      loadingState[friendId] = true;
     }
     setIntakeEntriesLoading(loadingState);
 
     await Promise.all(
-      closeFriendIds
-        .filter((friendId) => friendIds.includes(friendId))
-        .map(async (friendId) => {
-          try {
-            const entries = await getCloseFriendIntakeEntries(friendId);
-            closeFriendEntries[friendId] = entries;
-            errorState[friendId] = null;
-          } catch {
-            closeFriendEntries[friendId] = [];
-            errorState[friendId] = 'Could not load entries';
-          }
-        })
+      canViewEntriesFor.map(async (friendId) => {
+        try {
+          const entries = await getCloseFriendIntakeEntries(friendId);
+          closeFriendEntries[friendId] = entries;
+          errorState[friendId] = null;
+        } catch {
+          closeFriendEntries[friendId] = [];
+          errorState[friendId] = 'Could not load entries';
+        }
+      })
     );
 
     setIntakeEntriesMap(closeFriendEntries);
@@ -354,7 +365,7 @@ export default function FriendsPage() {
                 onMarkCloseFriend={() => handleMarkCloseFriend(friend.userId)}
                 onRemoveCloseFriend={() => handleRemoveCloseFriend(friend.userId)}
                 onRemoveFriend={() => handleRemoveFriend(friend.userId)}
-                onNudge={() => handleNudge(friend.userId)}
+                onNudge={friend.isMutualCloseFriend ? () => handleNudge(friend.userId) : undefined}
               />
             ))}
           </div>
@@ -370,22 +381,32 @@ export default function FriendsPage() {
       </button>
 
       {/* Add friend panel (search + invite) */}
-      {showAddFriend && (
-        <div className="mb-6 space-y-6">
-          {/* Friend search */}
-          <section>
-            <h2 className="text-sm font-bold text-foreground mb-3 uppercase tracking-wide">
-              Find Friends
-            </h2>
-            <FriendSearch />
-          </section>
+      <AnimatePresence>
+        {showAddFriend && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            className="overflow-hidden"
+          >
+            <div className="mb-6 space-y-6">
+              {/* Friend search */}
+              <section>
+                <h2 className="text-sm font-bold text-foreground mb-3 uppercase tracking-wide">
+                  Find Friends
+                </h2>
+                <FriendSearch />
+              </section>
 
-          {/* Invite share */}
-          <section>
-            <InviteShare userId={session!.user.id} />
-          </section>
-        </div>
-      )}
+              {/* Invite share */}
+              <section>
+                <InviteShare userId={session!.user.id} />
+              </section>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
