@@ -31,6 +31,7 @@ export function isFCMAvailable(): boolean {
  */
 async function getFirebaseMessaging(): Promise<{
   getToken: () => Promise<{ token: string }>;
+  requestPermissions: () => Promise<{ receive: string }>;
 } | null> {
   try {
     // @ts-ignore -- plugin installed in task 8.2; dynamic import gracefully fails if absent
@@ -51,6 +52,12 @@ export async function registerDeviceToken(userId: string): Promise<void> {
   const messaging = await getFirebaseMessaging();
   if (!messaging) {
     throw new Error('Firebase Messaging plugin is not available');
+  }
+
+  // Request push notification permissions (required on Android 13+)
+  const permResult = await messaging.requestPermissions();
+  if (permResult.receive !== 'granted') {
+    throw new Error('Push notification permission not granted');
   }
 
   const { token } = await messaging.getToken();

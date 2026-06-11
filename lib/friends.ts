@@ -289,7 +289,7 @@ export function computeNudgeCooldown(
   }
 
   const sentAtDate = new Date(sentAt);
-  const cooldownMs = 24 * 60 * 60 * 1000; // 24 hours
+  const cooldownMs = 2 * 60 * 60 * 1000; // 2 hours
   const expiresAt = new Date(sentAtDate.getTime() + cooldownMs);
 
   if (now < expiresAt) {
@@ -329,7 +329,7 @@ export async function getNudgeCooldown(
   }
 
   const sentAt = new Date(data.sent_at);
-  const cooldownMs = 24 * 60 * 60 * 1000; // 24 hours
+  const cooldownMs = 2 * 60 * 60 * 1000; // 2 hours
   const expiresAt = new Date(sentAt.getTime() + cooldownMs);
   const now = new Date();
 

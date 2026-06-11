@@ -7,6 +7,73 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+/**
+ * Generate a Google OAuth2 access token from a service account using Web Crypto API.
+ */
+async function getGoogleAccessToken(serviceAccount: {
+  client_email: string;
+  private_key: string;
+  token_uri: string;
+}): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: "RS256", typ: "JWT" };
+  const payload = {
+    iss: serviceAccount.client_email,
+    scope: "https://www.googleapis.com/auth/firebase.messaging",
+    aud: serviceAccount.token_uri,
+    iat: now,
+    exp: now + 3600,
+  };
+
+  function base64url(data: string): string {
+    return btoa(data).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+
+  const encodedHeader = base64url(JSON.stringify(header));
+  const encodedPayload = base64url(JSON.stringify(payload));
+  const signInput = `${encodedHeader}.${encodedPayload}`;
+
+  const pemContent = serviceAccount.private_key
+    .replace(/-----BEGIN PRIVATE KEY-----/, "")
+    .replace(/-----END PRIVATE KEY-----/, "")
+    .replace(/\n/g, "");
+  const binaryKey = Uint8Array.from(atob(pemContent), (c) => c.charCodeAt(0));
+
+  const cryptoKey = await crypto.subtle.importKey(
+    "pkcs8",
+    binaryKey,
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+
+  const signature = await crypto.subtle.sign(
+    "RSASSA-PKCS1-v1_5",
+    cryptoKey,
+    new TextEncoder().encode(signInput)
+  );
+
+  const encodedSignature = btoa(String.fromCharCode(...new Uint8Array(signature)))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+
+  const jwt = `${signInput}.${encodedSignature}`;
+
+  const tokenResponse = await fetch(serviceAccount.token_uri, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`,
+  });
+
+  const tokenData = await tokenResponse.json();
+  if (!tokenData.access_token) {
+    throw new Error(`Failed to get access token: ${JSON.stringify(tokenData)}`);
+  }
+
+  return tokenData.access_token;
+}
+
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -31,7 +98,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // 2. Verify auth — extract JWT from Authorization header
+    // 2. Verify auth
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
@@ -44,7 +111,6 @@ Deno.serve(async (req: Request) => {
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // Create a client with the user's JWT to verify identity
     const userClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -61,7 +127,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Verify senderId matches the authenticated user
     if (user.id !== senderId) {
       return new Response(
         JSON.stringify({ error: "senderId does not match authenticated user" }),
@@ -69,7 +134,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // 3. Create service-role client for DB operations
+    // 3. Service-role client
     const serviceClient = createClient(supabaseUrl, supabaseServiceRoleKey);
 
     // 4. Check nudge cooldown (24h from last nudge)
@@ -95,9 +160,9 @@ Deno.serve(async (req: Request) => {
       const hoursSinceLastNudge =
         (now.getTime() - lastSentAt.getTime()) / (1000 * 60 * 60);
 
-      if (hoursSinceLastNudge < 24) {
+      if (hoursSinceLastNudge < 2) {
         const expiresAt = new Date(
-          lastSentAt.getTime() + 24 * 60 * 60 * 1000
+          lastSentAt.getTime() + 2 * 60 * 60 * 1000
         ).toISOString();
         return new Response(
           JSON.stringify({ error: "Nudge cooldown active", expiresAt }),
@@ -126,7 +191,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // 6. Query profiles for sender's username
+    // 6. Query sender's username
     const { data: senderProfile, error: profileError } = await serviceClient
       .from("profiles")
       .select("username")
@@ -154,32 +219,42 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // 8. Send FCM message to all receiver tokens
-    const fcmServerKey = Deno.env.get("FCM_SERVER_KEY");
+    // 8. Send FCM v1 API message
+    const serviceAccountJson = Deno.env.get("FCM_SERVICE_ACCOUNT")!;
+    const serviceAccount = JSON.parse(serviceAccountJson);
+    const projectId = serviceAccount.project_id;
+
+    const accessToken = await getGoogleAccessToken(serviceAccount);
+
     const username = senderProfile.username;
-    // Ensure body is max 100 chars
     const nudgeBody = `${username} says: Stay hydrated! 💧`.slice(0, 100);
 
-    const fcmPromises = deviceTokens.map((dt: { token: string }) =>
-      fetch("https://fcm.googleapis.com/fcm/send", {
-        method: "POST",
-        headers: {
-          Authorization: `key=${fcmServerKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          to: dt.token,
-          notification: {
-            title: "Hydration Nudge",
-            body: nudgeBody,
+    const fcmPromises = deviceTokens.map(async (dt: { token: string }) => {
+      const resp = await fetch(
+        `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
           },
-          data: {
-            type: "nudge",
-            senderId,
-          },
-        }),
-      })
-    );
+          body: JSON.stringify({
+            message: {
+              token: dt.token,
+              notification: {
+                title: "Hydration Nudge",
+                body: nudgeBody,
+              },
+              data: {
+                type: "nudge",
+                senderId,
+              },
+            },
+          }),
+        }
+      );
+      return resp;
+    });
 
     await Promise.allSettled(fcmPromises);
 

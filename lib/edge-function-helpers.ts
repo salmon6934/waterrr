@@ -23,7 +23,7 @@ export function shouldProcessFriendRequest(status: string): boolean {
 export function isNudgeCooldownActive(lastSentAt: string | null, now: Date): boolean {
   if (!lastSentAt) return false;
   const elapsed = now.getTime() - new Date(lastSentAt).getTime();
-  return elapsed < 24 * 60 * 60 * 1000;
+  return elapsed < 2 * 60 * 60 * 1000;
 }
 
 /**
@@ -33,7 +33,7 @@ export function isNudgeCooldownActive(lastSentAt: string | null, now: Date): boo
  */
 export function getNudgeCooldownExpiry(lastSentAt: string): string {
   const sentAt = new Date(lastSentAt);
-  return new Date(sentAt.getTime() + 24 * 60 * 60 * 1000).toISOString();
+  return new Date(sentAt.getTime() + 2 * 60 * 60 * 1000).toISOString();
 }
 
 /**

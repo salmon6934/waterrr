@@ -236,6 +236,9 @@ export function initBackgroundSync(): { unsubscribe: () => void } {
   const { unsubscribe } = onAuthStateChange(async (session) => {
     if (!session) return;
 
+    // Skip sync for users who haven't verified their email or completed onboarding
+    if (!session.user.email_confirmed_at) return;
+
     const userId = session.user.id;
 
     // Always pull from Supabase first to support multi-device
