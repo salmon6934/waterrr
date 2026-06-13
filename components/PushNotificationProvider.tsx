@@ -13,10 +13,14 @@ import {
 
 interface PushNotificationContextValue {
   pushError: string | null;
+  foregroundNotification: { title: string; body: string } | null;
+  dismissNotification: () => void;
 }
 
 const PushNotificationContext = createContext<PushNotificationContextValue>({
   pushError: null,
+  foregroundNotification: null,
+  dismissNotification: () => {},
 });
 
 export function usePushNotification() {
@@ -29,17 +33,45 @@ export default function PushNotificationProvider({
   children: React.ReactNode;
 }) {
   const [pushError, setPushError] = useState<string | null>(null);
+  const [foregroundNotification, setForegroundNotification] = useState<{ title: string; body: string } | null>(null);
   const router = useRouter();
   const userIdRef = useRef<string | null>(null);
+
+  function dismissNotification() {
+    setForegroundNotification(null);
+  }
+
+  // Auto-dismiss foreground notification after 4 seconds
+  useEffect(() => {
+    if (!foregroundNotification) return;
+    const timer = setTimeout(() => setForegroundNotification(null), 4000);
+    return () => clearTimeout(timer);
+  }, [foregroundNotification]);
 
   useEffect(() => {
     let tokenRefreshCleanup: (() => void) | null = null;
     let notificationTapCleanup: (() => void) | null = null;
+    let foregroundCleanup: (() => void) | null = null;
 
     async function setupListeners() {
       try {
         const mod = await import('@capacitor-firebase/messaging');
         const FirebaseMessaging = mod.FirebaseMessaging;
+
+        // Listen for foreground notifications
+        const foregroundListener = await FirebaseMessaging.addListener(
+          'notificationReceived',
+          (event: { notification: { title?: string; body?: string } }) => {
+            const notification = event.notification;
+            if (notification.title || notification.body) {
+              setForegroundNotification({
+                title: notification.title || '',
+                body: notification.body || '',
+              });
+            }
+          }
+        );
+        foregroundCleanup = () => foregroundListener.remove();
 
         // Listen for FCM token refresh events
         const tokenListener = await FirebaseMessaging.addListener(
@@ -121,11 +153,27 @@ export default function PushNotificationProvider({
       unsubscribe();
       tokenRefreshCleanup?.();
       notificationTapCleanup?.();
+      foregroundCleanup?.();
     };
   }, [router]);
 
   return (
-    <PushNotificationContext.Provider value={{ pushError }}>
+    <PushNotificationContext.Provider value={{ pushError, foregroundNotification, dismissNotification }}>
+      {/* Foreground notification toast */}
+      {foregroundNotification && (
+        <div
+          onClick={dismissNotification}
+          className="fixed top-4 left-4 right-4 z-50 border border-border bg-background p-3 shadow-lg font-mono cursor-pointer"
+          role="alert"
+        >
+          {foregroundNotification.title && (
+            <p className="text-sm font-bold text-foreground">{foregroundNotification.title}</p>
+          )}
+          {foregroundNotification.body && (
+            <p className="text-xs text-muted mt-0.5">{foregroundNotification.body}</p>
+          )}
+        </div>
+      )}
       {children}
     </PushNotificationContext.Provider>
   );

@@ -1,5 +1,7 @@
 # dependencies
 /node_modules
+
+SESSION_CHANGES.md
 /.pnp
 .pnp.js
 .yarn/install-state.gz
