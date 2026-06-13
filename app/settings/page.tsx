@@ -87,7 +87,7 @@ export default function SettingsPage() {
 
       {/* Daily Goal Section */}
       <section className="mb-8">
-        <h2 className="text-sm font-mono text-muted mb-3">Daily Goal</h2>
+        <h2 className="text-base font-semibold text-foreground mb-3">Daily Goal</h2>
         <div className="flex items-center gap-3">
           <input
             type="number"
@@ -122,13 +122,13 @@ export default function SettingsPage() {
 
       {/* Reminders Section */}
       <section className="mb-8">
-        <h2 className="text-sm font-mono text-muted mb-3">Hydration Reminders</h2>
+        <h2 className="text-base font-semibold text-foreground mb-3">Hydration Reminders</h2>
         <ReminderForm />
       </section>
 
       {/* Theme Section */}
       <section className="mb-8">
-        <h2 className="text-sm font-mono text-muted mb-3">Appearance</h2>
+        <h2 className="text-base font-semibold text-foreground mb-3">Appearance</h2>
         <ThemeToggle />
       </section>
     </main>

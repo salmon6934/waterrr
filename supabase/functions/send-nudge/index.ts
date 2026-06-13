@@ -225,6 +225,7 @@ Deno.serve(async (req: Request) => {
     const projectId = serviceAccount.project_id;
 
     const accessToken = await getGoogleAccessToken(serviceAccount);
+    console.log(`Got FCM access token (length: ${accessToken.length}), project: ${projectId}`);
 
     const username = senderProfile.username;
     const nudgeBody = `${username} says: Stay hydrated! 💧`.slice(0, 100);
@@ -242,7 +243,7 @@ Deno.serve(async (req: Request) => {
             message: {
               token: dt.token,
               notification: {
-                title: "Hydration Nudge",
+                title: "Not Thirsty??",
                 body: nudgeBody,
               },
               data: {
@@ -253,6 +254,14 @@ Deno.serve(async (req: Request) => {
           }),
         }
       );
+
+      const responseBody = await resp.text();
+      console.log(`FCM response for token ${dt.token.slice(0, 10)}...: status=${resp.status}, body=${responseBody}`);
+
+      if (!resp.ok) {
+        console.error(`FCM delivery failed: ${resp.status} ${responseBody}`);
+      }
+
       return resp;
     });
 
@@ -264,6 +273,7 @@ Deno.serve(async (req: Request) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
+    console.error("send-nudge error:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

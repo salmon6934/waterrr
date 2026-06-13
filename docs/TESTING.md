@@ -70,6 +70,14 @@ End-to-end flows testing multiple modules working together:
 | `__tests__/social-integration.test.ts` | — | End-to-end social flows (removal cascade, nudge cooldown) |
 | `__tests__/ui-components.test.tsx` | — | FriendCard states, NudgeButton, RemoveFriendDialog, IntakeEntryList |
 
+### UI Design Change Tests (`__tests__/`)
+
+| File | Tests | Coverage Area |
+|------|-------|---------------|
+| `__tests__/navbar-profile-navigation.test.tsx` | 8 | NavBar 3-tab rendering, no Settings tab, font-bold active, no border-t, Profile page gear/pencil icons |
+| `__tests__/nudge-button-friendcard-layout.test.tsx` | 6 | NudgeButton Bell icon, 32×32 tap target, cooldown opacity, FriendCard collapsed/expanded layouts |
+| `__tests__/settings-reminder-styling.test.tsx` | 7 | Settings h2 heading styles, ReminderForm dropdown arrow alignment |
+
 ## Properties Tested
 
 ### Core Properties (Original)

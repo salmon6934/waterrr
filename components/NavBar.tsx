@@ -2,11 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Settings, Users, User } from 'lucide-react';
+import { Home, Users, User } from 'lucide-react';
 
 const navItems = [
   { href: '/', label: 'Home', icon: Home },
-  { href: '/settings', label: 'Settings', icon: Settings },
   { href: '/friends', label: 'Friends', icon: Users },
   { href: '/profile', label: 'Profile', icon: User },
 ];
@@ -16,7 +15,7 @@ export default function NavBar() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 max-w-[390px] mx-auto border-t border-border bg-background"
+      className="fixed bottom-0 left-0 right-0 max-w-[390px] mx-auto bg-background"
       aria-label="Main navigation"
     >
       <ul className="flex items-center justify-around h-14">
@@ -32,7 +31,7 @@ export default function NavBar() {
                 aria-current={isActive ? 'page' : undefined}
               >
                 <Icon size={20} strokeWidth={2} />
-                <span className="text-[10px] font-mono">{label}</span>
+                <span className={`text-[10px] font-mono ${isActive ? 'font-bold' : ''}`}>{label}</span>
               </Link>
             </li>
           );

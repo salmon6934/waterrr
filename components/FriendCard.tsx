@@ -23,12 +23,12 @@ interface FriendCardProps {
  * Expandable friend card displaying hydration progress.
  *
  * States:
- * - Collapsed: username, progress bar, intake/goal, streak
- * - Expanded (non-close friend): "Mark as Close Friend", "Remove Friend", NudgeButton
+ * - Collapsed: username, progress bar + NudgeButton (compact), intake/goal, streak
+ * - Expanded (non-close friend): "Mark as Close Friend", "Remove Friend"
  * - Expanded (close friend): 💧 icon, IntakeEntryList, "Remove Close Friend",
- *   "Remove Friend", NudgeButton
+ *   "Remove Friend"
  *
- * Validates: Requirements 1.1, 1.2, 1.5, 1.6, 2.1
+ * Validates: Requirements 1.1, 1.2, 1.5, 1.6, 2.1, 2.3, 2.4, 2.7
  */
 export default function FriendCard({
   friend,
@@ -123,14 +123,31 @@ export default function FriendCard({
           </span>
         </div>
 
-        {/* Progress bar */}
-        <div className="w-full h-3 border border-border bg-background mb-2 overflow-hidden">
-          <motion.div
-            className="h-full bg-foreground"
-            initial={{ width: 0 }}
-            animate={{ width: `${percentage}%` }}
-            transition={{ duration: 0.6, ease: 'easeOut' }}
-          />
+        {/* Progress bar row with nudge button */}
+        <div className="flex items-center gap-2 mb-2">
+          <div className="flex-1 h-3 border border-border bg-background overflow-hidden">
+            <motion.div
+              className="h-full bg-foreground"
+              initial={{ width: 0 }}
+              animate={{ width: `${percentage}%` }}
+              transition={{ duration: 0.6, ease: 'easeOut' }}
+            />
+          </div>
+          {onNudge && (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+              role="presentation"
+            >
+              <NudgeButton
+                compact
+                isInactive={friendIsInactive}
+                hasDeviceToken={hasDeviceToken}
+                cooldownExpiresAt={nudgeCooldownExpiresAt}
+                onNudge={onNudge}
+              />
+            </div>
+          )}
         </div>
 
         <div className="flex items-center justify-between text-xs text-muted">
@@ -161,48 +178,49 @@ export default function FriendCard({
                 />
               )}
 
-              {/* Show "Remove Close Friend" if I marked them */}
-              {iMarkedThemClose && onRemoveCloseFriend && (
-                <button
-                  type="button"
-                  onClick={onRemoveCloseFriend}
-                  className="w-full border border-border px-3 py-1.5 text-xs text-foreground hover:bg-foreground hover:text-background transition-colors"
-                >
-                  Remove Close Friend
-                </button>
-              )}
+              {/* Button row: close friend toggle + remove friend side by side */}
+              {(() => {
+                const closeFriendButton = iMarkedThemClose && onRemoveCloseFriend ? (
+                  <button
+                    key="remove-close"
+                    type="button"
+                    onClick={onRemoveCloseFriend}
+                    className={`${onRemoveFriend ? 'w-1/2' : 'w-full'} border border-border px-3 py-1.5 text-xs text-foreground hover:bg-foreground hover:text-background transition-colors`}
+                  >
+                    Remove Close Friend
+                  </button>
+                ) : !iMarkedThemClose && onMarkCloseFriend ? (
+                  <button
+                    key="mark-close"
+                    type="button"
+                    onClick={onMarkCloseFriend}
+                    className={`${onRemoveFriend ? 'w-1/2' : 'w-full'} border border-border px-3 py-1.5 text-xs text-foreground hover:bg-foreground hover:text-background transition-colors`}
+                  >
+                    Mark as Close Friend
+                  </button>
+                ) : null;
 
-              {/* Show "Mark as Close Friend" if I haven't marked them yet */}
-              {!iMarkedThemClose && onMarkCloseFriend && (
-                <button
-                  type="button"
-                  onClick={onMarkCloseFriend}
-                  className="w-full border border-border px-3 py-1.5 text-xs text-foreground hover:bg-foreground hover:text-background transition-colors"
-                >
-                  Mark as Close Friend
-                </button>
-              )}
+                const removeFriendButton = onRemoveFriend ? (
+                  <button
+                    key="remove-friend"
+                    type="button"
+                    onClick={() => setShowRemoveDialog(true)}
+                    className={`${closeFriendButton ? 'w-1/2' : 'w-full'} border border-border px-3 py-1.5 text-xs text-red-500 hover:bg-red-500 hover:text-background transition-colors`}
+                  >
+                    Remove Friend
+                  </button>
+                ) : null;
 
-              {/* Nudge button (shown in both expanded states) */}
-              {onNudge && (
-                <NudgeButton
-                  isInactive={friendIsInactive}
-                  hasDeviceToken={hasDeviceToken}
-                  cooldownExpiresAt={nudgeCooldownExpiresAt}
-                  onNudge={onNudge}
-                />
-              )}
-
-              {/* Remove friend button */}
-              {onRemoveFriend && (
-                <button
-                  type="button"
-                  onClick={() => setShowRemoveDialog(true)}
-                  className="w-full border border-border px-3 py-1.5 text-xs text-red-500 hover:bg-red-500 hover:text-background transition-colors"
-                >
-                  Remove Friend
-                </button>
-              )}
+                if (closeFriendButton || removeFriendButton) {
+                  return (
+                    <div className="flex gap-2">
+                      {closeFriendButton}
+                      {removeFriendButton}
+                    </div>
+                  );
+                }
+                return null;
+              })()}
 
               {/* Remove friend confirmation dialog */}
               {showRemoveDialog && (

@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Session } from '@supabase/supabase-js';
 import { getSession, signOut, onAuthStateChange } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
-import { LogOut, User } from 'lucide-react';
+import { LogOut, Pencil, Settings, User } from 'lucide-react';
 
 export default function ProfilePage() {
+  const router = useRouter();
   const [session, setSession] = useState<Session | null>(null);
   const [username, setUsername] = useState<string>('');
   const [error, setError] = useState('');
@@ -54,14 +56,31 @@ export default function ProfilePage() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-4 pb-20">
+    <main className="relative flex min-h-screen flex-col items-center justify-center p-4 pb-20">
+      <button
+        onClick={() => router.push('/settings')}
+        className="absolute top-4 right-4 p-2 text-foreground hover:text-muted transition-colors"
+        aria-label="Settings"
+      >
+        <Settings size={24} />
+      </button>
+
       <div className="w-full max-w-sm space-y-6">
         <div className="flex flex-col items-center gap-3">
           <div className="w-16 h-16 border border-border flex items-center justify-center">
             <User size={32} className="text-muted" />
           </div>
           {username && (
-            <p className="text-lg font-bold text-foreground">{username}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-lg font-bold text-foreground">{username}</p>
+              <button
+                onClick={() => router.push('/profile/edit')}
+                className="p-1 text-muted hover:text-foreground transition-colors"
+                aria-label="Edit profile"
+              >
+                <Pencil size={16} />
+              </button>
+            </div>
           )}
           <h1 className="text-2xl font-bold text-center">Profile</h1>
         </div>

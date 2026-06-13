@@ -1,12 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Bell } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 interface NudgeButtonProps {
   isInactive: boolean;
   hasDeviceToken: boolean;
   cooldownExpiresAt: string | null;
   onNudge: () => Promise<void>;
+  compact?: boolean;
 }
 
 /**
@@ -31,12 +34,16 @@ export function formatCooldownTime(remainingSeconds: number): string {
  * - Hidden when friend has no device token or is not inactive (Requirements 4.8, 4.9)
  * - Disabled with cooldown timer when cooldown is active (Requirement 4.5, 4.7)
  * - Shows error inline on send failure, keeps button enabled (Requirement 4.6)
+ * - When compact, renders as icon-only Bell button with 32×32 tap target (Requirements 2.1, 2.2)
+ * - Rotating animation on Bell icon while sending (Requirement 2.5)
+ * - Disabled state with opacity 0.5 during cooldown (Requirement 2.6)
  */
 export default function NudgeButton({
   isInactive,
   hasDeviceToken,
   cooldownExpiresAt,
   onNudge,
+  compact = false,
 }: NudgeButtonProps) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,8 +77,7 @@ export default function NudgeButton({
   //   return null;
   // }
 
-  // NOTE: Cooldown temporarily disabled for testing. Restore before production.
-  const isCooldownActive = false;
+  const isCooldownActive = remainingSeconds > 0;
 
   async function handleNudge() {
     setError(null);
@@ -87,6 +93,41 @@ export default function NudgeButton({
     }
   }
 
+  if (compact) {
+    return (
+      <div className="font-mono">
+        <button
+          type="button"
+          disabled={isCooldownActive || sending}
+          onClick={handleNudge}
+          aria-label="Nudge"
+          className={`min-w-[32px] min-h-[32px] flex items-center justify-center border border-border transition-colors ${
+            isCooldownActive
+              ? 'opacity-50 cursor-not-allowed'
+              : sending
+                ? 'cursor-wait'
+                : 'text-foreground hover:bg-foreground hover:text-background'
+          }`}
+        >
+          <motion.span
+            className="inline-flex"
+            animate={sending ? { rotate: 360 } : { rotate: 0 }}
+            transition={
+              sending
+                ? { duration: 0.8, repeat: Infinity, ease: 'linear' }
+                : { duration: 0 }
+            }
+          >
+            <Bell size={16} />
+          </motion.span>
+        </button>
+        {error && (
+          <p className="text-xs text-red-500 mt-1">{error}</p>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="font-mono">
       <button
@@ -94,16 +135,35 @@ export default function NudgeButton({
         disabled={isCooldownActive || sending}
         onClick={handleNudge}
         className={`w-full border border-border px-3 py-1.5 text-xs transition-colors ${
-          isCooldownActive || sending
-            ? 'text-muted cursor-not-allowed opacity-60'
-            : 'text-foreground hover:bg-foreground hover:text-background'
+          isCooldownActive
+            ? 'opacity-50 cursor-not-allowed'
+            : sending
+              ? 'text-muted cursor-wait opacity-60'
+              : 'text-foreground hover:bg-foreground hover:text-background'
         }`}
       >
-        {sending
-          ? 'Sending...'
-          : isCooldownActive
-            ? formatCooldownTime(remainingSeconds)
-            : '👋 Nudge'}
+        {sending ? (
+          <span className="inline-flex items-center gap-1.5">
+            <motion.span
+              className="inline-flex"
+              animate={{ rotate: 360 }}
+              transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
+            >
+              <Bell size={16} />
+            </motion.span>
+            Sending...
+          </span>
+        ) : isCooldownActive ? (
+          <span className="inline-flex items-center gap-1.5">
+            <Bell size={16} />
+            {formatCooldownTime(remainingSeconds)}
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5">
+            <Bell size={16} />
+            Nudge
+          </span>
+        )}
       </button>
       {error && (
         <p className="text-xs text-red-500 mt-1">{error}</p>
