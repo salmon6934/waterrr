@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Flame } from 'lucide-react';
 import { EnhancedFriendProgress, IntakeEntry } from '@/lib/types';
 import { isInactive } from '@/lib/friends';
 import IntakeEntryList from '@/components/IntakeEntryList';
@@ -118,8 +119,9 @@ export default function FriendCard({
             )}
             {username}
           </span>
-          <span className="text-xs text-muted">
-            🔥 {currentStreak} day{currentStreak !== 1 ? 's' : ''}
+          <span className="flex items-center gap-0.5 text-xs text-muted">
+            <Flame size={12} strokeWidth={2} />
+            {currentStreak} day{currentStreak !== 1 ? 's' : ''}
           </span>
         </div>
 

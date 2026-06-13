@@ -104,6 +104,11 @@ export async function sendFriendRequest(targetUserId: string): Promise<void> {
   if (error) {
     throw new Error(`Failed to send friend request: ${error.message}`);
   }
+
+  // Send push notification to recipient (fire-and-forget)
+  supabase.functions.invoke('send-push-notification', {
+    body: { senderId: user.id, recipientId: targetUserId },
+  }).catch(() => {});
 }
 
 /**
@@ -413,6 +418,11 @@ export async function addCloseFriend(userId: string, friendId: string): Promise<
   if (error) {
     throw new Error(`Failed to add close friend: ${error.message}`);
   }
+
+  // Send push notification to the friend (fire-and-forget)
+  supabase.functions.invoke('send-close-friend-added-notification', {
+    body: { userId, friendId },
+  }).catch(() => {});
 }
 
 /**

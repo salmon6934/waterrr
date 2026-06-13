@@ -228,7 +228,7 @@ Deno.serve(async (req: Request) => {
     console.log(`Got FCM access token (length: ${accessToken.length}), project: ${projectId}`);
 
     const username = senderProfile.username;
-    const nudgeBody = `${username} says: Stay hydrated! 💧`.slice(0, 100);
+    const nudgeBody = `${username} wants you to drink water!`;
 
     const fcmPromises = deviceTokens.map(async (dt: { token: string }) => {
       const resp = await fetch(
@@ -243,7 +243,7 @@ Deno.serve(async (req: Request) => {
             message: {
               token: dt.token,
               notification: {
-                title: "Not Thirsty??",
+                title: "Hydrate now!",
                 body: nudgeBody,
               },
               data: {

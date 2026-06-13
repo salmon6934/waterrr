@@ -75,9 +75,9 @@ async function getGoogleAccessToken(serviceAccount: {
 }
 
 /**
- * Send friend request push notification.
- * Triggered by client invocation after sending a friend request.
- * Verifies JWT, confirms pending request exists, sends FCM v1 notification.
+ * Send "close friend added" push notification.
+ * Triggered by client invocation after marking someone as a close friend.
+ * Notifies the friend that they were added as a close friend.
  */
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -92,11 +92,11 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { senderId, recipientId } = await req.json();
+    const { userId, friendId } = await req.json();
 
-    if (!senderId || !recipientId) {
+    if (!userId || !friendId) {
       return new Response(
-        JSON.stringify({ error: "senderId and recipientId are required" }),
+        JSON.stringify({ error: "userId and friendId are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -120,7 +120,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: { user }, error: authError } = await userClient.auth.getUser();
 
-    if (authError || !user || user.id !== senderId) {
+    if (authError || !user || user.id !== userId) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -129,27 +129,26 @@ Deno.serve(async (req: Request) => {
 
     const serviceClient = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-    // Confirm pending friend request exists
-    const { data: connection } = await serviceClient
-      .from("friend_connections")
-      .select("id")
-      .eq("user_id", senderId)
-      .eq("friend_id", recipientId)
-      .eq("status", "pending")
+    // Confirm close_friends row exists
+    const { data: closeFriendRow } = await serviceClient
+      .from("close_friends")
+      .select("user_id")
+      .eq("user_id", userId)
+      .eq("friend_id", friendId)
       .maybeSingle();
 
-    if (!connection) {
+    if (!closeFriendRow) {
       return new Response(
-        JSON.stringify({ message: "No pending request found, skipping" }),
+        JSON.stringify({ message: "Close friend designation not found, skipping" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Get recipient's device tokens
+    // Get friend's device tokens
     const { data: deviceTokens } = await serviceClient
       .from("device_tokens")
       .select("token")
-      .eq("user_id", recipientId);
+      .eq("user_id", friendId);
 
     if (!deviceTokens || deviceTokens.length === 0) {
       return new Response(
@@ -158,16 +157,16 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Get sender's username
-    const { data: senderProfile } = await serviceClient
+    // Get user's username
+    const { data: userProfile } = await serviceClient
       .from("profiles")
       .select("username")
-      .eq("id", senderId)
+      .eq("id", userId)
       .single();
 
-    if (!senderProfile) {
+    if (!userProfile) {
       return new Response(
-        JSON.stringify({ error: "Failed to get sender profile" }),
+        JSON.stringify({ error: "Failed to get user profile" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -178,7 +177,7 @@ Deno.serve(async (req: Request) => {
     const projectId = serviceAccount.project_id;
     const accessToken = await getGoogleAccessToken(serviceAccount);
 
-    const body = `${senderProfile.username} sent you a friend request`;
+    const body = `${userProfile.username} added you as a close friend 💧`;
 
     const fcmPromises = deviceTokens.map(async (dt: { token: string }) => {
       const resp = await fetch(
@@ -193,12 +192,12 @@ Deno.serve(async (req: Request) => {
             message: {
               token: dt.token,
               notification: {
-                title: "New Friend Request",
+                title: "Close Friend",
                 body,
               },
               data: {
-                type: "friend_request",
-                senderId,
+                type: "close_friend_added",
+                userId,
               },
             },
           }),
@@ -217,7 +216,7 @@ Deno.serve(async (req: Request) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("send-push-notification error:", error);
+    console.error("send-close-friend-added-notification error:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

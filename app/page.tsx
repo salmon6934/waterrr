@@ -127,6 +127,11 @@ export default function Home() {
             .then(({ error }) => {
               if (error) {
                 console.error('Failed to sync entry to Supabase:', error.message);
+              } else {
+                // Notify mutual close friends (fire-and-forget)
+                supabase.functions.invoke('send-close-friend-intake-notification', {
+                  body: { userId: session.user.id, volume: newEntry.volume },
+                }).catch(() => {});
               }
             });
         }

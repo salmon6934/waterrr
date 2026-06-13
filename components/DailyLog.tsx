@@ -24,7 +24,7 @@ function formatTimestamp(timestamp: string): string {
  * a formatted timestamp. New entries animate in via Framer Motion.
  */
 export default function DailyLog({ entries, onDelete }: DailyLogProps) {
-  const sorted = sortEntriesChronologically(entries);
+  const sorted = sortEntriesChronologically(entries).reverse();
 
   return (
     <div className="w-full">

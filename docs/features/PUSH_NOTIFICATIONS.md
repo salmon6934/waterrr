@@ -8,8 +8,8 @@ AVIEN uses **Firebase Cloud Messaging (FCM)** to deliver push notifications for 
 
 ```
 ┌────────────────┐     ┌─────────────────┐     ┌─────────────┐
-│  Supabase DB   │────▶│  Edge Function  │────▶│  FCM API    │
-│  (webhook)     │     │  (Deno runtime) │     │  (HTTP v1)  │
+│  Client App    │────▶│  Edge Function  │────▶│  FCM API    │
+│  (invoke)      │     │  (Deno runtime) │     │  (HTTP v1)  │
 └────────────────┘     └─────────────────┘     └──────┬──────┘
                                                       │
                                                       ▼
@@ -21,11 +21,12 @@ AVIEN uses **Firebase Cloud Messaging (FCM)** to deliver push notifications for 
 
 ## Notification Types
 
-| Type | Trigger | Edge Function | Body Format |
-|------|---------|---------------|-------------|
-| Friend Request | `friend_connections` INSERT (status=pending) | `send-push-notification` | "{username} sent you a friend request" |
-| Nudge | Client invocation | `send-nudge` | "{username} reminds you to drink water! 💧" |
-| Close Friend Intake | `intake_entries` INSERT | `send-close-friend-intake-notification` | "{username} just drank {volume}ml" |
+| Type | Trigger | Edge Function | Title | Body |
+|------|---------|---------------|-------|------|
+| Friend Request | Client invocation after sending request | `send-push-notification` | "New Friend Request" | "{username} sent you a friend request" |
+| Nudge | Client invocation (tap bell) | `send-nudge` | "Hydrate now!" | "{username} wants you to drink water!" |
+| Close Friend Intake | Client invocation after logging water | `send-close-friend-intake-notification` | "Close Friend Activity" | "{username} just drank {volume}ml" |
+| Close Friend Added | Client invocation after marking close friend | `send-close-friend-added-notification` | "Close Friend" | "{username} added you as a close friend 💧" |
 
 ## Device Token Management (`lib/push.ts`)
 
@@ -60,15 +61,18 @@ A React context provider (`components/PushNotificationProvider.tsx`) that:
 
 ## Edge Functions
 
+All edge functions use the FCM HTTP v1 API with OAuth2 service account authentication. They are invoked directly from the client via `supabase.functions.invoke()` (no database webhooks).
+
 ### `send-push-notification`
 
-- **Trigger:** Database webhook on `friend_connections` INSERT
+- **Trigger:** Client invocation via `supabase.functions.invoke()` after sending a friend request
 - **Logic:**
-  1. Check `record.status === 'pending'` (skip otherwise)
-  2. Query `device_tokens` for `record.friend_id` (recipient)
-  3. Query `profiles` for `record.user_id` to get sender username
-  4. Send FCM message to all recipient tokens
-  5. Skip silently if no tokens found
+  1. Verify auth (senderId matches JWT)
+  2. Confirm pending friend_connection exists in database
+  3. Query `device_tokens` for recipient
+  4. Query `profiles` for sender username
+  5. Get OAuth2 access token from FCM service account
+  6. Send FCM v1 API message
 
 ### `send-nudge`
 
@@ -81,22 +85,33 @@ A React context provider (`components/PushNotificationProvider.tsx`) that:
   5. Query `profiles` for sender username
   6. Insert `nudges` row
   7. Get OAuth2 access token from FCM service account (Web Crypto API)
-  8. Send FCM v1 API message with encouragement text (max 100 chars)
+  8. Send FCM v1 API message
   9. Return `{ success: true, sentAt }`
 
 ### `send-close-friend-intake-notification`
 
-- **Trigger:** Database webhook on `intake_entries` INSERT
+- **Trigger:** Client invocation via `supabase.functions.invoke()` after logging water
 - **Logic:**
-  1. Extract `user_id` and `volume` from record
-  2. Query `close_friends WHERE friend_id = user_id` (who marked this user as close)
-  3. For each recipient:
+  1. Verify auth (userId matches JWT)
+  2. Query `close_friends` in both directions to find mutual close friends
+  3. For each mutual close friend:
      - Query `device_tokens` — skip if none
-     - Query `close_friend_notifications` for rate limit check (60-min window)
+     - Query `close_friend_notifications` for rate limit check (5-min window)
      - If rate limited → skip
-     - Otherwise: INSERT notification record, send FCM message
+     - Otherwise: INSERT notification record, send FCM v1 message
   4. FCM body: `"{username} just drank {volume}ml"`
-  5. Data payload: `{ type: 'close_friend_intake', friendId: user_id }`
+  5. Data payload: `{ type: 'close_friend_intake', friendId: userId }`
+
+### `send-close-friend-added-notification`
+
+- **Trigger:** Client invocation via `supabase.functions.invoke()` after marking someone as close friend
+- **Logic:**
+  1. Verify auth (userId matches JWT)
+  2. Confirm close_friends row exists
+  3. Query `device_tokens` for the friend
+  4. Query `profiles` for username
+  5. Get OAuth2 access token from FCM service account
+  6. Send FCM v1 message: "{username} added you as a close friend 💧"
 
 ## Firebase Configuration
 
@@ -108,7 +123,7 @@ A React context provider (`components/PushNotificationProvider.tsx`) that:
 
 ### Edge Function FCM Credentials
 
-Edge Functions use a Firebase service account key (`FCM_SERVICE_ACCOUNT` Supabase secret) to authenticate with the FCM HTTP v1 API. The function generates an OAuth2 access token from the service account JSON using the Web Crypto API at runtime — no external JWT libraries required.
+All edge functions use a Firebase service account key (`FCM_SERVICE_ACCOUNT` Supabase secret) to authenticate with the FCM HTTP v1 API. The function generates an OAuth2 access token from the service account JSON using the Web Crypto API at runtime — no external JWT libraries required. The legacy `FCM_SERVER_KEY` is no longer used.
 
 ### Android Notification Channel
 
