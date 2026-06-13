@@ -12,7 +12,7 @@ interface PendingRequest {
   username: string;
 }
 
-export default function PendingRequests() {
+export default function PendingRequests({ refreshKey, onAccept }: { refreshKey?: number; onAccept?: () => void }) {
   const [requests, setRequests] = useState<PendingRequest[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -61,12 +61,13 @@ export default function PendingRequests() {
 
   useEffect(() => {
     loadRequests();
-  }, [loadRequests]);
+  }, [loadRequests, refreshKey]);
 
   async function handleAccept(connectionId: string) {
     try {
       await acceptFriendRequest(connectionId);
       setRequests((prev) => prev.filter((r) => r.id !== connectionId));
+      onAccept?.();
     } catch (err) {
       console.error('Failed to accept request:', err);
     }

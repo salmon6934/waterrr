@@ -29,6 +29,7 @@ export default function FriendsPage() {
   const [friendsLoading, setFriendsLoading] = useState(true);
   const [connected, setConnected] = useState(true);
   const [showAddFriend, setShowAddFriend] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [intakeEntriesMap, setIntakeEntriesMap] = useState<Record<string, IntakeEntry[]>>({});
   const [intakeEntriesLoading, setIntakeEntriesLoading] = useState<Record<string, boolean>>({});
   const [intakeEntriesError, setIntakeEntriesError] = useState<Record<string, string | null>>({});
@@ -306,7 +307,7 @@ export default function FriendsPage() {
     if (!session?.user?.id) return;
     const connId = connectionIdMap[friendId];
     if (!connId) return;
-    await removeFriend(connId);
+    await removeFriend(connId, session.user.id, friendId);
     // Optimistic update — remove from list
     setFriends((prev) => prev.filter((f) => f.userId !== friendId));
   };
@@ -364,7 +365,12 @@ export default function FriendsPage() {
         </h1>
         <button
           type="button"
-          onClick={() => session?.user?.id && loadFriends(session.user.id)}
+          onClick={() => {
+            if (session?.user?.id) {
+              loadFriends(session.user.id);
+              setRefreshKey((k) => k + 1);
+            }
+          }}
           disabled={friendsLoading}
           className="w-8 h-8 flex items-center justify-center rounded-full border border-border text-foreground hover:bg-foreground hover:text-background transition-colors disabled:opacity-50"
           aria-label="Refresh friends"
@@ -374,7 +380,7 @@ export default function FriendsPage() {
       </div>
 
       {/* Pending friend requests */}
-      <PendingRequests />
+      <PendingRequests refreshKey={refreshKey} onAccept={() => session?.user?.id && loadFriends(session.user.id)} />
 
       {/* Friends list */}
       <section className="mb-6">

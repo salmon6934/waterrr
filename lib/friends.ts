@@ -231,11 +231,30 @@ export function isCloseFriendNotificationRateLimited(
 }
 
 /**
- * Removes a friend connection by deleting it from the database.
- * The database cascade will automatically remove any associated close_friends row.
+ * Removes a friend connection and cleans up close_friends in both directions.
  * @param connectionId - The ID of the friend connection to remove
+ * @param userId - The current authenticated user's ID
+ * @param friendId - The friend being removed
  */
-export async function removeFriend(connectionId: string): Promise<void> {
+export async function removeFriend(
+  connectionId: string,
+  userId: string,
+  friendId: string
+): Promise<void> {
+  // Remove close friend designations in both directions
+  await supabase
+    .from('close_friends')
+    .delete()
+    .eq('user_id', userId)
+    .eq('friend_id', friendId);
+
+  await supabase
+    .from('close_friends')
+    .delete()
+    .eq('user_id', friendId)
+    .eq('friend_id', userId);
+
+  // Remove the friend connection itself
   const { error } = await supabase
     .from('friend_connections')
     .delete()
