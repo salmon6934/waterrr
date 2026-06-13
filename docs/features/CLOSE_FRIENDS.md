@@ -103,7 +103,7 @@ isInactive(lastIntakeTimestamp: string | null, now: Date): boolean
 
 ### Cooldown
 
-- Duration: **24 hours** from last nudge sent
+- Duration: **2 hours** from last nudge sent
 - Tracked in `nudges` table (sender_id, receiver_id, sent_at)
 - Timer display: hours when ≥ 1 hour, minutes when < 1 hour
 - Format: `Math.floor(seconds / 3600)` + "h remaining" or `Math.floor(seconds / 60)` + "m remaining"
@@ -140,7 +140,7 @@ Pure functions extracted from Edge Functions for testability:
 
 ```typescript
 shouldProcessFriendRequest(status)           → true only if status === 'pending'
-isNudgeCooldownActive(lastSentAt, now)       → true if < 24h elapsed
+isNudgeCooldownActive(lastSentAt, now)       → true if < 2h elapsed
 getNudgeCooldownExpiry(lastSentAt)           → ISO string of expiry time
 isIntakeNotificationRateLimited(lastSentAt, now) → true if < 60min elapsed
 buildIntakeNotificationBody(username, volume)    → "{username} just drank {volume}ml"

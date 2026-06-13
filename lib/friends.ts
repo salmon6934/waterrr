@@ -359,7 +359,7 @@ export function isInactive(
   const lastIntake = new Date(lastIntakeTimestamp);
   const deltaMs = now.getTime() - lastIntake.getTime();
 
-  return deltaMs > 86400000; // 24 hours in milliseconds
+  return deltaMs > 600000; // 10 minutes in milliseconds
 }
 
 /**

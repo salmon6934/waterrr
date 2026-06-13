@@ -279,13 +279,27 @@ export default function FriendsPage() {
   const handleMarkCloseFriend = async (friendId: string) => {
     if (!session?.user?.id) return;
     await addCloseFriend(session.user.id, friendId);
-    await loadFriends(session.user.id);
+    // Optimistic update — mark locally without full reload
+    setFriends((prev) =>
+      prev.map((f) =>
+        f.userId === friendId
+          ? { ...f, iMarkedThemClose: true, isCloseFriend: true, isMutualCloseFriend: f.theyMarkedMeClose }
+          : f
+      )
+    );
   };
 
   const handleRemoveCloseFriend = async (friendId: string) => {
     if (!session?.user?.id) return;
     await removeCloseFriend(session.user.id, friendId);
-    await loadFriends(session.user.id);
+    // Optimistic update
+    setFriends((prev) =>
+      prev.map((f) =>
+        f.userId === friendId
+          ? { ...f, iMarkedThemClose: false, isCloseFriend: false, isMutualCloseFriend: false }
+          : f
+      )
+    );
   };
 
   const handleRemoveFriend = async (friendId: string) => {
@@ -293,13 +307,22 @@ export default function FriendsPage() {
     const connId = connectionIdMap[friendId];
     if (!connId) return;
     await removeFriend(connId);
-    await loadFriends(session.user.id);
+    // Optimistic update — remove from list
+    setFriends((prev) => prev.filter((f) => f.userId !== friendId));
   };
 
   const handleNudge = async (friendId: string) => {
     if (!session?.user?.id) return;
     await sendNudge(session.user.id, friendId);
-    await loadFriends(session.user.id);
+    // Optimistic update — set cooldown expiry to 2h from now
+    const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+    setFriends((prev) =>
+      prev.map((f) =>
+        f.userId === friendId
+          ? { ...f, nudgeCooldownExpiresAt: expiresAt }
+          : f
+      )
+    );
   };
 
   // Loading state
@@ -335,9 +358,20 @@ export default function FriendsPage() {
       )}
 
       {/* Page header */}
-      <h1 className="text-lg font-bold text-foreground mb-6 uppercase tracking-wide">
-        Friends
-      </h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-lg font-bold text-foreground uppercase tracking-wide">
+          Friends
+        </h1>
+        <button
+          type="button"
+          onClick={() => session?.user?.id && loadFriends(session.user.id)}
+          disabled={friendsLoading}
+          className="w-8 h-8 flex items-center justify-center rounded-full border border-border text-foreground hover:bg-foreground hover:text-background transition-colors disabled:opacity-50"
+          aria-label="Refresh friends"
+        >
+          ↻
+        </button>
+      </div>
 
       {/* Pending friend requests */}
       <PendingRequests />

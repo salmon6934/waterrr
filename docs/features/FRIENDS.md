@@ -155,5 +155,5 @@ The Friends page subscribes to Supabase channels for live updates via `lib/realt
 - RLS ensures users can only see their own connections and friends' intake data
 - Friend search exposes only usernames (not emails or private data)
 - Connection uniqueness constraint prevents duplicate requests
-- Nudge cooldown enforced server-side (Edge Function)
+- Nudge cooldown enforced server-side (Edge Function, 2-hour window)
 - Close friend intake notifications rate-limited server-side (60-min window)

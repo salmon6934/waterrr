@@ -160,9 +160,9 @@ Deno.serve(async (req: Request) => {
       const hoursSinceLastNudge =
         (now.getTime() - lastSentAt.getTime()) / (1000 * 60 * 60);
 
-      if (hoursSinceLastNudge < 2) {
+      if (hoursSinceLastNudge < 0) {
         const expiresAt = new Date(
-          lastSentAt.getTime() + 2 * 60 * 60 * 1000
+          lastSentAt.getTime() + 0 * 60 * 60 * 1000
         ).toISOString();
         return new Response(
           JSON.stringify({ error: "Nudge cooldown active", expiresAt }),

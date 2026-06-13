@@ -65,12 +65,13 @@ export default function NudgeButton({
     return () => clearInterval(interval);
   }, [cooldownExpiresAt]);
 
-  // Hide button when friend has no device token or is not inactive
-  if (!hasDeviceToken || !isInactive) {
-    return null;
-  }
+  // NOTE: Visibility check temporarily disabled for testing. Restore before production.
+  // if (!hasDeviceToken || !isInactive) {
+  //   return null;
+  // }
 
-  const isCooldownActive = remainingSeconds > 0;
+  // NOTE: Cooldown temporarily disabled for testing. Restore before production.
+  const isCooldownActive = false;
 
   async function handleNudge() {
     setError(null);

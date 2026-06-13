@@ -33,7 +33,7 @@ Tests that verify universal properties hold for **any** valid input. The `fast-c
 - Algorithmic correctness (sorted entries have non-decreasing timestamps)
 - Symmetry guarantees (friend connections are bidirectional)
 - Round-trip guarantees (encode → decode = identity)
-- Cooldown logic (24h nudge, 60min notification rate limit)
+- Cooldown logic (2h nudge, 60min notification rate limit)
 - Format correctness (notification bodies match spec)
 
 ### Integration Tests
@@ -100,7 +100,7 @@ End-to-end flows testing multiple modules working together:
 | S5 | Friend request notification payload contains sender username | `friends.ts` |
 | S6 | Inactivity detection uses 24-hour threshold | `friends.ts` |
 | S7 | Nudge notification body contains username and ≤ 100 chars | `friends.ts` |
-| S8 | Nudge cooldown active within 24 hours of sent_at | `friends.ts` |
+| S8 | Nudge cooldown active within 2 hours of sent_at | `friends.ts` |
 | S9 | Cooldown time formatting uses hours or minutes appropriately | `NudgeButton` |
 | S10 | Close friend intake notification format matches spec | `friends.ts` |
 | S11 | Close friend intake notification 60-min rate limiting | `friends.ts` |

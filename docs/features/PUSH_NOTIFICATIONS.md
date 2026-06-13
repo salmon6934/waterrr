@@ -35,8 +35,9 @@ Checks if the app is running on a native Capacitor platform (not in browser or S
 
 ### `registerDeviceToken(userId: string): Promise<void>`
 
-1. Gets FCM token from Capacitor Firebase Messaging plugin
-2. Upserts token into `device_tokens` table (conflict on `token` column)
+1. Requests push notification permissions (required on Android 13+)
+2. Gets FCM token from Capacitor Firebase Messaging plugin
+3. Upserts token into `device_tokens` table (conflict on `token` column)
 
 ### `unregisterDeviceToken(userId: string): Promise<void>`
 
@@ -74,12 +75,14 @@ A React context provider (`components/PushNotificationProvider.tsx`) that:
 - **Trigger:** Client invocation via `supabase.functions.invoke()`
 - **Logic:**
   1. Verify auth (senderId matches JWT)
-  2. Query `nudges` table for cooldown check (24h)
+  2. Query `nudges` table for cooldown check (2h)
   3. If cooldown active → return error
   4. Query `device_tokens` for receiver
-  5. Insert `nudges` row
-  6. Send FCM message with encouragement text (max 100 chars)
-  7. Return `{ success: true, sentAt }`
+  5. Query `profiles` for sender username
+  6. Insert `nudges` row
+  7. Get OAuth2 access token from FCM service account (Web Crypto API)
+  8. Send FCM v1 API message with encouragement text (max 100 chars)
+  9. Return `{ success: true, sentAt }`
 
 ### `send-close-friend-intake-notification`
 
@@ -105,7 +108,13 @@ A React context provider (`components/PushNotificationProvider.tsx`) that:
 
 ### Edge Function FCM Credentials
 
-Edge Functions use a Firebase service account key to send FCM messages via the HTTP v1 API. This is stored as a Supabase secret (not in the client bundle).
+Edge Functions use a Firebase service account key (`FCM_SERVICE_ACCOUNT` Supabase secret) to authenticate with the FCM HTTP v1 API. The function generates an OAuth2 access token from the service account JSON using the Web Crypto API at runtime — no external JWT libraries required.
+
+### Android Notification Channel
+
+The app creates a `fcm_default_channel` notification channel at startup in `MainActivity.java` with `IMPORTANCE_HIGH`. This is required for Android 8+ (API 26+) to display push notifications. The channel is referenced in:
+- `AndroidManifest.xml` — `com.google.firebase.messaging.default_notification_channel_id` meta-data
+- `res/values/strings.xml` — `default_notification_channel_id` string resource
 
 ## Platform Behavior
 

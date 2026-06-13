@@ -69,7 +69,7 @@ FCM device registrations for push notification delivery.
 
 ### `nudges`
 
-Nudge notification records with cooldown tracking (24h between nudges per pair).
+Nudge notification records with cooldown tracking (2h between nudges per pair).
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
