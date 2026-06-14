@@ -121,17 +121,13 @@ supabase link --project-ref <your-project-ref>
 supabase functions deploy send-push-notification
 supabase functions deploy send-nudge
 supabase functions deploy send-close-friend-intake-notification
+supabase functions deploy send-close-friend-added-notification
 
 # Set FCM secret
-supabase secrets set FCM_SERVICE_ACCOUNT_KEY='<json-key-contents>'
+supabase secrets set FCM_SERVICE_ACCOUNT='<json-key-contents>'
 ```
 
-### Database Webhooks
-
-Configure webhooks in Supabase Dashboard → Database → Webhooks:
-
-1. **Friend request notification:** INSERT on `friend_connections` → `send-push-notification`
-2. **Close friend intake notification:** INSERT on `intake_entries` → `send-close-friend-intake-notification`
+All Edge Functions are invoked directly from the client via `supabase.functions.invoke()`. No database webhooks are required.
 
 ## Pre-Deployment Checklist
 
@@ -140,9 +136,8 @@ Configure webhooks in Supabase Dashboard → Database → Webhooks:
 - [ ] Build succeeds (`npm run build`)
 - [ ] Environment variables configured for target Supabase project
 - [ ] Supabase database tables created with RLS policies (7 tables)
-- [ ] Edge Functions deployed (3 functions)
-- [ ] Database webhooks configured (2 webhooks)
+- [ ] Edge Functions deployed (4 functions)
+- [ ] FCM service account key set as Supabase secret (`FCM_SERVICE_ACCOUNT`)
 - [ ] Firebase project configured with `google-services.json`
-- [ ] FCM service account key set as Supabase secret
 - [ ] Capacitor sync completed (`npx cap sync android`)
 - [ ] APK tested on physical device

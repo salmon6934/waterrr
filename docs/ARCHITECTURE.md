@@ -94,11 +94,12 @@ These degrade gracefully to no-ops when running in a standard browser.
 
 Server-side logic runs as Supabase Edge Functions (Deno runtime):
 
-- **`send-push-notification`** — triggered by DB webhook on `friend_connections` INSERT
+- **`send-push-notification`** — invoked by client to send friend request notifications
 - **`send-nudge`** — invoked by client to send nudge notifications
-- **`send-close-friend-intake-notification`** — triggered by DB webhook on `intake_entries` INSERT
+- **`send-close-friend-intake-notification`** — invoked by client after logging water
+- **`send-close-friend-added-notification`** — invoked by client after marking a close friend
 
-Edge Functions interact with FCM HTTP v1 API to deliver push notifications.
+All Edge Functions are invoked directly from the client via `supabase.functions.invoke()`. There are no database webhooks — all notification triggers are client-side fire-and-forget calls.
 
 ## Module Boundaries
 
@@ -143,13 +144,13 @@ User Tap → QuickAddButton → page.tsx state update
               Instant UI update      Cloud persistence
                                             │
                                             ▼
-                                   DB Webhook fires
+                              Client invokes Edge Function (fire-and-forget)
                                             │
                                             ▼
                               send-close-friend-intake-notification
                                             │
                                             ▼
-                              FCM push to close friend recipients
+                              FCM push to mutual close friend recipients
 ```
 
 ### Read Path (App Startup)
@@ -173,13 +174,16 @@ Show AuthScreen    Register FCM token
 ### Push Notification Flow
 
 ```
-Event occurs (friend request / nudge / close friend intake)
+Event occurs (friend request / nudge / close friend intake / close friend added)
     │
     ▼
-Supabase Edge Function triggered
+Client invokes Supabase Edge Function (fire-and-forget)
     │
     ▼
-Query device_tokens for recipient
+Edge Function verifies auth + applies rate limits
+    │
+    ▼
+Query device_tokens for recipient(s)
     │
     ▼
 Send FCM HTTP v1 API message

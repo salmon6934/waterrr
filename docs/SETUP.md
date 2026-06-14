@@ -85,11 +85,12 @@ The app requires seven tables in Supabase. See [Database documentation](./DATABA
 
 ## Supabase Edge Functions
 
-Three Edge Functions must be deployed:
+Four Edge Functions must be deployed:
 
 1. `send-push-notification` — friend request notifications
 2. `send-nudge` — nudge inactive friends
 3. `send-close-friend-intake-notification` — close friend intake alerts
+4. `send-close-friend-added-notification` — close friend added alerts
 
 Deploy via Supabase CLI:
 
@@ -97,9 +98,10 @@ Deploy via Supabase CLI:
 supabase functions deploy send-push-notification
 supabase functions deploy send-nudge
 supabase functions deploy send-close-friend-intake-notification
+supabase functions deploy send-close-friend-added-notification
 ```
 
-Database webhooks must be configured to trigger functions on INSERT events.
+All functions are invoked directly from the client — no database webhooks required.
 
 ## Project Structure
 

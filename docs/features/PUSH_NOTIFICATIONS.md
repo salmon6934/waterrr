@@ -61,7 +61,7 @@ A React context provider (`components/PushNotificationProvider.tsx`) that:
 
 ## Edge Functions
 
-All edge functions use the FCM HTTP v1 API with OAuth2 service account authentication. They are invoked directly from the client via `supabase.functions.invoke()` (no database webhooks).
+All edge functions use the FCM HTTP v1 API with OAuth2 service account authentication. They are invoked directly from the client via `supabase.functions.invoke()` (fire-and-forget, no database webhooks).
 
 ### `send-push-notification`
 
@@ -123,7 +123,7 @@ All edge functions use the FCM HTTP v1 API with OAuth2 service account authentic
 
 ### Edge Function FCM Credentials
 
-All edge functions use a Firebase service account key (`FCM_SERVICE_ACCOUNT` Supabase secret) to authenticate with the FCM HTTP v1 API. The function generates an OAuth2 access token from the service account JSON using the Web Crypto API at runtime — no external JWT libraries required. The legacy `FCM_SERVER_KEY` is no longer used.
+All edge functions use a Firebase service account key (`FCM_SERVICE_ACCOUNT` Supabase secret) to authenticate with the FCM HTTP v1 API. Each function generates an OAuth2 access token from the service account JSON using the Web Crypto API at runtime — no external JWT libraries required.
 
 ### Android Notification Channel
 

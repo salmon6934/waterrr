@@ -123,15 +123,15 @@ When a close friend logs water, all users who designated them as close receive a
 
 ### Rate Limiting
 
-- **Window:** 60 minutes per (logger, recipient) pair
+- **Window:** 5 minutes per (logger, recipient) pair
 - **Tracked in:** `close_friend_notifications` table
-- If a close friend logs multiple entries within 60 minutes, only the first triggers a notification
+- If a close friend logs multiple entries within 5 minutes, only the first triggers a notification
 
 ### Implementation
 
 ```typescript
 buildCloseFriendIntakeNotificationBody(username, volume)  → "{username} just drank {volume}ml"
-isCloseFriendNotificationRateLimited(lastSentAt, now)     → true if < 60 minutes elapsed
+isCloseFriendNotificationRateLimited(lastSentAt, now)     → true if < 5 minutes elapsed
 ```
 
 ## Edge Function Helpers (`lib/edge-function-helpers.ts`)
@@ -142,7 +142,7 @@ Pure functions extracted from Edge Functions for testability:
 shouldProcessFriendRequest(status)           → true only if status === 'pending'
 isNudgeCooldownActive(lastSentAt, now)       → true if < 2h elapsed
 getNudgeCooldownExpiry(lastSentAt)           → ISO string of expiry time
-isIntakeNotificationRateLimited(lastSentAt, now) → true if < 60min elapsed
+isIntakeNotificationRateLimited(lastSentAt, now) → true if < 5min elapsed
 buildIntakeNotificationBody(username, volume)    → "{username} just drank {volume}ml"
 buildNudgeNotificationBody(username)             → "{username} says: Stay hydrated! 💧"
 ```

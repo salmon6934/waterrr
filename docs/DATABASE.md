@@ -80,7 +80,7 @@ Nudge notification records with cooldown tracking (2h between nudges per pair).
 
 ### `close_friend_notifications`
 
-Rate-limiting records for close friend intake notifications (60-min window per pair).
+Rate-limiting records for close friend intake notifications (5-min window per pair).
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
@@ -153,10 +153,7 @@ All tables have RLS enabled. Policies enforce data isolation at the database lev
 
 ## Database Webhooks
 
-| Trigger | Table | Event | Target Edge Function |
-|---------|-------|-------|---------------------|
-| Friend request notification | `friend_connections` | INSERT | `send-push-notification` |
-| Close friend intake notification | `intake_entries` | INSERT | `send-close-friend-intake-notification` |
+No database webhooks are used. All push notification triggers are client-side — the app invokes Edge Functions directly via `supabase.functions.invoke()` after relevant actions (fire-and-forget pattern).
 
 ## Realtime
 

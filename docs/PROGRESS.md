@@ -68,7 +68,7 @@
 
 ## In Progress
 
-_No active feature work._
+_No active feature work. Project released as v1.0.0._
 
 ## Planned / Backlog
 
@@ -77,7 +77,6 @@ _No active feature work._
 - [ ] Weekly/monthly intake statistics
 - [ ] Custom drink types (coffee, tea, etc.)
 - [ ] Group challenges
-- [ ] Fix notification delivery on battery-optimized Android devices
 
 ## Architecture Milestones
 
@@ -89,6 +88,7 @@ _No active feature work._
 | UI design changes | ✅ | Nav restructuring, NudgeButton redesign, FriendCard layout, settings/profile improvements |
 | FCM v1 migration | ✅ | All push notifications migrated to FCM v1 API with client-side invocation |
 | Notification fixes | ✅ | Removed broken webhooks, added close friend added notif, fixed friend removal cascade |
+| v1.0.0 release | ✅ | Published APK on GitHub Releases |
 
 ## Testing Coverage
 

@@ -20,6 +20,9 @@ const config: CapacitorConfig = {
       smallIcon: 'ic_stat_icon',
       iconColor: '#000000',
     },
+    PushNotifications: {
+      presentationOptions: ['badge', 'sound', 'alert'],
+    },
   },
 };
 ```
@@ -128,3 +131,4 @@ android/
 - **Single platform** — currently Android only (iOS requires Xcode + macOS)
 - **No hot reload on device** — must rebuild + sync for web changes
 - **Push notifications require device** — FCM doesn't work in browser dev mode
+- **Google account required** — FCM push delivery requires a Google account signed in on the device (Google Play Services dependency)
