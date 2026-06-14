@@ -109,11 +109,15 @@ export default function PushNotificationProvider({
 
     async function handleAuthenticated(userId: string) {
       userIdRef.current = userId;
+      console.log('[Push] handleAuthenticated called for:', userId);
+      console.log('[Push] isFCMAvailable:', isFCMAvailable());
       if (isFCMAvailable()) {
         try {
           await registerDeviceToken(userId);
+          console.log('[Push] registerDeviceToken succeeded');
           setPushError(null);
-        } catch {
+        } catch (err) {
+          console.error('[Push] registerDeviceToken failed:', err);
           setPushError('Push notifications are unavailable');
         }
       }

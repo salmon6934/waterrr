@@ -36,7 +36,12 @@ async function getFirebaseMessaging(): Promise<{
   try {
     // @ts-ignore -- plugin installed in task 8.2; dynamic import gracefully fails if absent
     const mod = await import('@capacitor-firebase/messaging');
-    return mod.FirebaseMessaging;
+    const plugin = mod.FirebaseMessaging;
+    // Wrap in object to avoid async function calling .then() on the Capacitor proxy
+    return {
+      getToken: () => plugin.getToken(),
+      requestPermissions: () => plugin.requestPermissions(),
+    };
   } catch {
     return null;
   }
@@ -51,16 +56,21 @@ async function getFirebaseMessaging(): Promise<{
 export async function registerDeviceToken(userId: string): Promise<void> {
   const messaging = await getFirebaseMessaging();
   if (!messaging) {
+    console.error('[Push] Firebase Messaging plugin not available');
     throw new Error('Firebase Messaging plugin is not available');
   }
 
   // Request push notification permissions (required on Android 13+)
+  console.log('[Push] Requesting permissions...');
   const permResult = await messaging.requestPermissions();
+  console.log('[Push] Permission result:', permResult.receive);
   if (permResult.receive !== 'granted') {
     throw new Error('Push notification permission not granted');
   }
 
+  console.log('[Push] Getting token...');
   const { token } = await messaging.getToken();
+  console.log('[Push] Got token:', token?.slice(0, 10) + '...');
 
   const { error } = await supabase
     .from('device_tokens')
@@ -70,8 +80,10 @@ export async function registerDeviceToken(userId: string): Promise<void> {
     );
 
   if (error) {
+    console.error('[Push] Upsert failed:', error.message);
     throw new Error(`Failed to register device token: ${error.message}`);
   }
+  console.log('[Push] Token upserted successfully');
 }
 
 /**
